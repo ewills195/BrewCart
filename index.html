@@ -17,18 +17,12 @@
         extend: {
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
-          },
-          colors: {
-            amber: {
-              450: '#f59e0b',
-            }
           }
         }
       }
     };
   </script>
   <style>
-    /* Custom subtle scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
       height: 8px;
@@ -47,7 +41,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
 
-  <!-- Toast Notification (replaces alert()) -->
+  <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-5 right-5 z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
     <div class="bg-slate-800 border border-amber-500/40 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
       <span id="toast-icon" class="text-amber-400 text-lg">🍺</span>
@@ -185,7 +179,7 @@
         <span><strong>Tip:</strong> If "Open All in New Tabs" only opens 1 tab, allow pop-ups for this site in your browser's address bar.</span>
       </div>
 
-      <!-- Ingredients Table / Cards -->
+      <!-- Ingredients Table -->
       <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
@@ -225,7 +219,6 @@
 
       <!-- Modal Body -->
       <div class="p-5 overflow-y-auto space-y-4">
-        <!-- Browser Security / CORS Note -->
         <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-300 leading-relaxed">
           <strong class="text-amber-400">Extension-Free Auto-Cart:</strong> Because browser security (<strong>CORS</strong>) blocks a GitHub Pages site from silently editing another store's cart, choose one of these three extension-free methods to run on the store's tab.
         </div>
@@ -303,6 +296,476 @@
   <!-- Application Logic -->
   <script>
     // =========================================================================
+    // 1. STATE & RETAILER CONFIGURATION
+    // =========================================================================
+    const RETAILERS = {
+      morebeer: {
+        name: 'MoreBeer',
+        searchUrl: 'https://www.morebeer.com/search?search='
+      },
+      hopcraft: {
+        name: 'HopCraft Supply',
+        searchUrl: 'https://www.hopcraftsupply.com/search?q='
+      }
+    };
+
+    let currentRetailer = 'morebeer';
+    let currentTab = 'json';
+    let parsedIngredients = [];
+    let renderedRows = [];
+
+    // =========================================================================
+    // 2. INGREDIENT DICTIONARY
+    // =========================================================================
+    const INGREDIENT_DICTIONARY = [
+      // Base Malts
+      { canonical: 'Briess 2-Row Brewers Malt', category: 'malt', aliases: ['2-row', '2 row', 'pale malt 2-row', 'briess 2-row', 'american 2-row'] },
+      { canonical: 'Rahr 2-Row Pale Malt', category: 'malt', aliases: ['rahr 2-row', 'rahr pale malt'] },
+      { canonical: 'Maris Otter Pale Ale Malt', category: 'malt', aliases: ['maris otter', 'crisp maris otter', 'simpsons maris otter', 'pale ale malt'] },
+      { canonical: 'Pilsner Malt (Weyermann)', category: 'malt', aliases: ['pilsner', 'pilsner malt', 'weyermann pilsner', 'german pilsner'] },
+      { canonical: 'Vienna Malt', category: 'malt', aliases: ['vienna', 'vienna malt', 'weyermann vienna'] },
+      { canonical: 'Munich Malt', category: 'malt', aliases: ['munich', 'munich malt', 'munich 10l', 'weyermann munich'] },
+      { canonical: 'White Wheat Malt', category: 'malt', aliases: ['white wheat', 'wheat malt', 'briess white wheat'] },
+      { canonical: 'Flaked Oats', category: 'malt', aliases: ['flaked oats', 'oats', 'rolled oats'] },
+      { canonical: 'Flaked Wheat', category: 'malt', aliases: ['flaked wheat', 'torrified wheat'] },
+      // Crystal / Specialty Malts
+      { canonical: 'Caramel / Crystal 20L', category: 'malt', aliases: ['crystal 20', 'caramel 20', 'crystal 20l', 'caramel 20l', 'c20'] },
+      { canonical: 'Caramel / Crystal 40L', category: 'malt', aliases: ['crystal 40', 'caramel 40', 'crystal 40l', 'caramel 40l', 'c40'] },
+      { canonical: 'Caramel / Crystal 60L', category: 'malt', aliases: ['crystal 60', 'caramel 60', 'crystal 60l', 'caramel 60l', 'c60'] },
+      { canonical: 'Carapils / Dextrine Malt', category: 'malt', aliases: ['carapils', 'dextrine', 'carafoam'] },
+      { canonical: 'Chocolate Malt', category: 'malt', aliases: ['chocolate malt', 'chocolate', 'pale chocolate'] },
+      { canonical: 'Roasted Barley', category: 'malt', aliases: ['roasted barley', 'black barley'] },
+      { canonical: 'Acidulated Malt', category: 'malt', aliases: ['acidulated', 'acid malt', 'sauermalz'] },
+      // Hops
+      { canonical: 'Citra Pellet Hops', category: 'hop', aliases: ['citra', 'citra hops'] },
+      { canonical: 'Mosaic Pellet Hops', category: 'hop', aliases: ['mosaic', 'mosaic hops'] },
+      { canonical: 'Cascade Pellet Hops', category: 'hop', aliases: ['cascade', 'cascade hops'] },
+      { canonical: 'Centennial Pellet Hops', category: 'hop', aliases: ['centennial', 'centennial hops'] },
+      { canonical: 'Simcoe Pellet Hops', category: 'hop', aliases: ['simcoe', 'simcoe hops'] },
+      { canonical: 'Amarillo Pellet Hops', category: 'hop', aliases: ['amarillo', 'amarillo hops'] },
+      { canonical: 'Galaxy Pellet Hops', category: 'hop', aliases: ['galaxy', 'galaxy hops'] },
+      { canonical: 'El Dorado Pellet Hops', category: 'hop', aliases: ['el dorado', 'eldorado'] },
+      { canonical: 'Saaz Pellet Hops', category: 'hop', aliases: ['saaz', 'czech saaz'] },
+      { canonical: 'Hallertau Mittelfruh Hops', category: 'hop', aliases: ['hallertau', 'hallertauer', 'mittelfruh'] },
+      { canonical: 'Magnum Pellet Hops', category: 'hop', aliases: ['magnum', 'german magnum'] },
+      // Yeasts
+      { canonical: 'Fermentis Safale US-05', category: 'yeast', aliases: ['us-05', 'us05', 'safale us-05', 'american ale'] },
+      { canonical: 'Fermentis Safale S-04', category: 'yeast', aliases: ['s-04', 's04', 'safale s-04', 'english ale'] },
+      { canonical: 'Fermentis Saflager W-34/70', category: 'yeast', aliases: ['w-34/70', '34/70', 'saflager w-34/70'] },
+      { canonical: 'Lallemand Verdant IPA', category: 'yeast', aliases: ['verdant', 'verdant ipa'] },
+      { canonical: 'Wyeast 1056 American Ale', category: 'yeast', aliases: ['wyeast 1056', '1056'] },
+      { canonical: 'White Labs WLP001 California Ale', category: 'yeast', aliases: ['wlp001', 'california ale'] }
+    ];
+
+    // =========================================================================
+    // 3. UI & NAVIGATION HELPERS
+    // =========================================================================
+    function showToast(msg, icon = '🍺') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = msg;
+      document.getElementById('toast-icon').textContent = icon;
+      toast.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.classList.add('hidden'), 300);
+      }, 3000);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function setRetailer(retailer) {
+      currentRetailer = retailer;
+      const btnMb = document.getElementById('btn-morebeer');
+      const btnHc = document.getElementById('btn-hopcraft');
+      const active = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-amber-500 text-slate-950 shadow-sm';
+      const inactive = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200';
+      btnMb.className = retailer === 'morebeer' ? active : inactive;
+      btnHc.className = retailer === 'hopcraft' ? active : inactive;
+      showToast(`Switched retailer to ${RETAILERS[retailer].name}`, '🏪');
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const tJson = document.getElementById('tab-json');
+      const tText = document.getElementById('tab-text');
+      const pJson = document.getElementById('panel-json');
+      const pText = document.getElementById('panel-text');
+      const active = 'px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-slate-800 text-amber-400';
+      const inactive = 'px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-slate-200';
+      tJson.className = tab === 'json' ? active : inactive;
+      tText.className = tab === 'text' ? active : inactive;
+      pJson.classList.toggle('hidden', tab !== 'json');
+      pText.classList.toggle('hidden', tab !== 'text');
+    }
+
+    // =========================================================================
+    // 4. SAMPLE DATA & FILE UPLOAD
+    // =========================================================================
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('json-input').value = e.target.result;
+        parseJSONInput();
+      };
+      reader.readAsText(file);
+    }
+
+    function loadSampleJSON() {
+      const sample = {
+        name: 'West Coast Pale Ale',
+        fermentables: [
+          { name: 'Pale Malt (2-Row) US', amount: 4.53592 },
+          { name: 'Caramel/Crystal Malt - 40L', amount: 0.453592 },
+          { name: 'Vienna Malt', amount: 0.340194 }
+        ],
+        hops: [
+          { name: 'Citra', amount: 42.5243 },
+          { name: 'Mosaic', amount: 28.3495 },
+          { name: 'Cascade', amount: 21.2621 }
+        ],
+        yeasts: [
+          { name: 'Safale American US-05', amount: 1 }
+        ]
+      };
+      document.getElementById('json-input').value = JSON.stringify(sample, null, 2);
+      parseJSONInput();
+    }
+
+    function loadSampleText() {
+      document.getElementById('text-input').value = [
+        '10.5 lbs Pale Malt 2-Row',
+        '1.25 lbs Caramel 40L',
+        '0.75 lbs Flaked Oats',
+        '1.5 oz Citra',
+        '1.0 oz Mosaic',
+        '0.5 oz Mystery Experimental Hop',
+        '1 pkg Safale US-05'
+      ].join('\n');
+      parseTextInput();
+    }
+
+    // =========================================================================
+    // 5. RECIPE PARSING (JSON & PLAIN TEXT)
+    // =========================================================================
+    function parseJSONInput() {
+      const raw = document.getElementById('json-input').value.trim();
+      if (!raw) {
+        showToast('Please paste or upload Brewfather JSON first.', '⚠️');
+        return;
+      }
+      try {
+        const data = JSON.parse(raw);
+        const items = [];
+
+        // Fermentables (Brewfather stores amount in kg)
+        if (Array.isArray(data.fermentables)) {
+          data.fermentables.forEach(f => {
+            const lbs = (Number(f.amount) || 0) * 2.20462262;
+            if (f.name && lbs > 0) {
+              items.push({ rawName: f.name, rawQty: lbs, unit: 'lb', categoryHint: 'malt' });
+            }
+          });
+        }
+
+        // Hops (Brewfather stores amount in grams)
+        if (Array.isArray(data.hops)) {
+          data.hops.forEach(h => {
+            const oz = (Number(h.amount) || 0) * 0.03527396;
+            if (h.name && oz > 0) {
+              items.push({ rawName: h.name, rawQty: oz, unit: 'oz', categoryHint: 'hop' });
+            }
+          });
+        }
+
+        // Yeasts
+        if (Array.isArray(data.yeasts)) {
+          data.yeasts.forEach(y => {
+            const pkg = Math.max(1, Math.round(Number(y.amount) || 1));
+            if (y.name) {
+              items.push({ rawName: y.name, rawQty: pkg, unit: 'pkg', categoryHint: 'yeast' });
+            }
+          });
+        }
+
+        if (items.length === 0) {
+          showToast('No fermentables, hops, or yeasts found in JSON.', '⚠️');
+          return;
+        }
+
+        parsedIngredients = items;
+        processAndRender();
+      } catch (err) {
+        showToast('Invalid JSON format. Please check your input.', '❌');
+      }
+    }
+
+    function parseTextInput() {
+      const raw = document.getElementById('text-input').value.trim();
+      if (!raw) {
+        showToast('Please paste recipe text first.', '⚠️');
+        return;
+      }
+
+      const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const items = [];
+
+      lines.forEach(line => {
+        const match = line.match(/^(\d+(?:\.\d+)?)\s*(lbs?|pounds?|oz|ounces?|g|grams?|kg|pkgs?|packs?|packets?)?\s+(.+)$/i);
+        if (match) {
+          let qty = parseFloat(match[1]);
+          let unitRaw = (match[2] || 'lb').toLowerCase();
+          const name = match[3].trim();
+
+          let unit = 'lb';
+          let categoryHint = null;
+
+          if (unitRaw.startsWith('kg')) {
+            qty = qty * 2.20462262;
+            unit = 'lb';
+            categoryHint = 'malt';
+          } else if (unitRaw.startsWith('lb') || unitRaw.startsWith('pound')) {
+            unit = 'lb';
+            categoryHint = 'malt';
+          } else if (unitRaw === 'g' || unitRaw.startsWith('gram')) {
+            qty = qty * 0.03527396;
+            unit = 'oz';
+            categoryHint = 'hop';
+          } else if (unitRaw.startsWith('oz') || unitRaw.startsWith('ounce')) {
+            unit = 'oz';
+            categoryHint = 'hop';
+          } else if (unitRaw.startsWith('p')) {
+            unit = 'pkg';
+            categoryHint = 'yeast';
+          }
+
+          items.push({ rawName: name, rawQty: qty, unit, categoryHint });
+        } else {
+          items.push({ rawName: line, rawQty: 1, unit: 'ea', categoryHint: null });
+        }
+      });
+
+      parsedIngredients = items;
+      processAndRender();
+    }
+
+    function reprocessCurrent() {
+      if (parsedIngredients.length > 0) {
+        processAndRender();
+      }
+    }
+
+    // =========================================================================
+    // 6. FUZZY MATCHING (TOKEN SIMILARITY + LEVENSHTEIN DISTANCE)
+    // =========================================================================
+    function normalizeText(str) {
+      return str.toLowerCase().replace(/[^a-z0-9\s/-]/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function levenshtein(a, b) {
+      const m = a.length;
+      const n = b.length;
+      if (m === 0) return n;
+      if (n === 0) return m;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+      }
+      return dp[m][n];
+    }
+
+    function similarityScore(query, target) {
+      const q = normalizeText(query);
+      const t = normalizeText(target);
+      if (!q || !t) return 0;
+      if (q === t) return 1;
+      if (t.includes(q) || q.includes(t)) return 0.9;
+
+      const qTokens = new Set(q.split(' '));
+      const tTokens = new Set(t.split(' '));
+      let intersection = 0;
+      qTokens.forEach(tok => { if (tTokens.has(tok)) intersection++; });
+      const union = new Set([...qTokens, ...tTokens]).size;
+      const jaccard = union > 0 ? intersection / union : 0;
+
+      const maxLen = Math.max(q.length, t.length);
+      const levSim = maxLen > 0 ? 1 - levenshtein(q, t) / maxLen : 0;
+
+      return 0.65 * jaccard + 0.35 * levSim;
+    }
+
+    function matchIngredient(rawName, categoryHint) {
+      const scored = INGREDIENT_DICTIONARY.map(entry => {
+        let best = similarityScore(rawName, entry.canonical);
+        entry.aliases.forEach(alias => {
+          const s = similarityScore(rawName, alias);
+          if (s > best) best = s;
+        });
+        if (categoryHint && entry.category === categoryHint) {
+          best += 0.05;
+        }
+        return { entry, score: Math.min(1, best) };
+      }).sort((a, b) => b.score - a.score);
+
+      const top = scored[0];
+      const second = scored[1];
+      const candidates = scored.slice(0, 4).map(s => s.entry.canonical);
+
+      if (top.score >= 0.72 && (!second || top.score - second.score >= 0.08)) {
+        return { status: 'green', matched: top.entry.canonical, candidates, score: top.score };
+      } else if (top.score >= 0.42) {
+        return { status: 'yellow', matched: top.entry.canonical, candidates, score: top.score };
+      } else {
+        return { status: 'red', matched: rawName, candidates, score: top.score };
+      }
+    }
+
+    // =========================================================================
+    // 7. RENDERING & STORE LAUNCHER
+    // =========================================================================
+    function processAndRender() {
+      const roundUp = document.getElementById('toggle-rounding').checked;
+
+      renderedRows = parsedIngredients.map((item, idx) => {
+        const displayQty = roundUp && (item.unit === 'lb' || item.unit === 'oz')
+          ? Math.ceil(item.rawQty)
+          : Number(item.rawQty.toFixed(2));
+        const match = matchIngredient(item.rawName, item.categoryHint);
+        return {
+          id: idx,
+          rawName: item.rawName,
+          displayQty,
+          unit: item.unit,
+          status: match.status,
+          selectedTerm: match.matched,
+          candidates: match.candidates,
+          score: match.score
+        };
+      });
+
+      renderTable();
+      document.getElementById('results-section').classList.remove('hidden');
+    }
+
+    function getStoreSearchTerm(row) {
+      return row.selectedTerm || row.rawName;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('results-tbody');
+      tbody.innerHTML = '';
+
+      let conflictCount = 0;
+      renderedRows.forEach((row, idx) => {
+        if (row.status === 'yellow') conflictCount++;
+
+        const badgeHtml = row.status === 'green'
+          ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">High Match</span>'
+          : row.status === 'yellow'
+            ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Conflict</span>'
+            : '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">Unmatched</span>';
+
+        let termControl = '';
+        if (row.status === 'yellow') {
+          const opts = row.candidates.map(c =>
+            `<option value="${escapeHtml(c)}" ${c === row.selectedTerm ? 'selected' : ''}>${escapeHtml(c)}</option>`
+          ).join('');
+          termControl = `
+            <select onchange="updateRowTerm(${idx}, this.value)" class="w-full max-w-xs bg-slate-950 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm text-amber-200 outline-none">
+              ${opts}
+              <option value="${escapeHtml(row.rawName)}">Use raw: ${escapeHtml(row.rawName)}</option>
+            </select>
+          `;
+        } else {
+          termControl = `<span class="text-slate-200 font-medium">${escapeHtml(row.selectedTerm)}</span>`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/30 transition-colors';
+        tr.innerHTML = `
+          <td class="py-3.5 px-4 whitespace-nowrap font-bold text-amber-400">${row.displayQty} <span class="text-xs font-normal text-slate-400">${row.unit}</span></td>
+          <td class="py-3.5 px-4 text-slate-300">${escapeHtml(row.rawName)}</td>
+          <td class="py-3.5 px-4">${termControl}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap">${badgeHtml}</td>
+          <td class="py-3.5 px-4 text-right whitespace-nowrap">
+            <button onclick="openSingleTab(${idx})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors">
+              Search Store ↗
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('item-count-badge').textContent = `${renderedRows.length} items`;
+      document.getElementById('conflict-summary').textContent = conflictCount > 0
+        ? `${conflictCount} conflict(s) detected — please verify yellow dropdowns.`
+        : 'All ingredients matched cleanly!';
+    }
+
+    function updateRowTerm(idx, value) {
+      if (renderedRows[idx]) {
+        renderedRows[idx].selectedTerm = value;
+      }
+    }
+
+    function openSingleTab(idx) {
+      const row = renderedRows[idx];
+      if (!row) return;
+      const url = RETAILERS[currentRetailer].searchUrl + encodeURIComponent(getStoreSearchTerm(row));
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    function openAllTabs() {
+      if (renderedRows.length === 0) {
+        showToast('Parse a recipe first!', '⚠️');
+        return;
+      }
+      renderedRows.forEach(row => {
+        const url = RETAILERS[currentRetailer].searchUrl + encodeURIComponent(getStoreSearchTerm(row));
+        window.open(url, '_blank', 'noopener,noreferrer');
+      });
+      showToast(`Launched ${renderedRows.length} tabs on ${RETAILERS[currentRetailer].name}!`, '🚀');
+    }
+
+    function copyFormattedList() {
+      if (renderedRows.length === 0) {
+        showToast('Parse a recipe first!', '⚠️');
+        return;
+      }
+      const text = renderedRows.map(r => `${r.displayQty} ${r.unit} - ${getStoreSearchTerm(r)}`).join('\n');
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast('Shopping list copied to clipboard!', '📋');
+      } catch (err) {
+        showToast('Failed to copy shopping list.', '❌');
+      }
+      document.body.removeChild(textarea);
+    }
+
+    // =========================================================================
     // 8. AUTO-CART MODAL (BOOKMARKLET, CONSOLE SNIPPET & PERMALINK BUILDER)
     // =========================================================================
     function openAutoCartModal() {
@@ -351,7 +814,7 @@
 
     function generateBookmarklet() {
       const searchBase = RETAILERS[currentRetailer].searchUrl;
-      const bmCode = `(async()=>{const S="${searchBase}";let q=JSON.parse(localStorage.getItem('brewcart_queue')||'null');if(!q){let raw='';try{raw=await navigator.clipboard.readText();}catch(e){}if(!raw||!raw.trim().startsWith('[')){raw=prompt('Paste BrewCart JSON payload:');}if(!raw)return;try{q=JSON.parse(raw);localStorage.setItem('brewcart_queue',JSON.stringify(q));}catch(e){return alert('Invalid BrewCart payload');}}if(!q.length){localStorage.removeItem('brewcart_queue');return alert('BrewCart: Finished all items!');}const cur=q[0];const btn=document.querySelector('button[name="add"],.add-to-cart,button.btn-add-to-cart');const qty=document.querySelector('input[name="quantity"],input.qty');if(btn){if(qty)qty.value=cur.qty;btn.click();q.shift();localStorage.setItem('brewcart_queue',JSON.stringify(q));setTimeout(()=>{if(q.length)location.href=S+encodeURIComponent(q[0].term);else{localStorage.removeItem('brewcart_queue');alert('BrewCart: Finished!');}},1500);}else{location.href=S+encodeURIComponent(cur.term);}})();`;
+      const bmCode = `(async()=>{const S="${searchBase}";let q=JSON.parse(localStorage.getItem('brewcart_queue')||'null');if(!q){let raw='';try{raw=await navigator.clipboard.readText();}catch(e){}if(!raw||!raw.trim().startsWith('[')){raw=window.prompt('Paste BrewCart JSON payload:');}if(!raw)return;try{q=JSON.parse(raw);localStorage.setItem('brewcart_queue',JSON.stringify(q));}catch(e){return alert('Invalid BrewCart payload');}}if(!q.length){localStorage.removeItem('brewcart_queue');return alert('BrewCart: Finished all items!');}const cur=q[0];const btn=document.querySelector('button[name="add"],.add-to-cart,button.btn-add-to-cart');const qty=document.querySelector('input[name="quantity"],input.qty');if(btn){if(qty)qty.value=cur.qty;btn.click();q.shift();localStorage.setItem('brewcart_queue',JSON.stringify(q));setTimeout(()=>{if(q.length)location.href=S+encodeURIComponent(q[0].term);else{localStorage.removeItem('brewcart_queue');alert('BrewCart: Finished!');}},1500);}else{location.href=S+encodeURIComponent(cur.term);}})();`;
       document.getElementById('bookmarklet-link').href = 'javascript:' + encodeURIComponent(bmCode);
     }
 
