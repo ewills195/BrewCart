@@ -1,964 +1,659 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BrewCart — Recipe to Store Launcher</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          }
-        }
-      }
-    };
-  </script>
+  <title>BrewCart — Advanced Recipe to Cart Engine</title>
   <style>
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
+    :root {
+      --bg: #0b0f19;
+      --surface: #131c31;
+      --surface-hover: #1e293b;
+      --surface-2: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --border: #334155;
+      --radius: 8px;
     }
-    ::-webkit-scrollbar-track {
-      background: #0f172a;
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 4px;
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.025em;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    select, button, input, textarea {
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    select, input[type="text"], textarea {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.6rem 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus, input[type="text"]:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    button {
+      background: var(--accent);
+      color: #0b0f19;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.65rem 1.25rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:hover { background: var(--accent-hover); }
+    button:active { transform: translateY(1px); }
+    button.secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.secondary:hover { background: var(--surface-hover); }
+    
+    main {
+      max-width: 1280px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    @media (min-width: 960px) {
+      main { grid-template-columns: 1fr 1.35fr; }
+    }
+    
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+    .tab-btn {
+      background: transparent;
+      color: var(--muted);
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+    }
+    .tab-btn.active {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    textarea {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+    }
+    .row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+    .item-row {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--green);
+      border-radius: var(--radius);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .item-row.conflict { border-left-color: var(--yellow); }
+    .item-row.miss { border-left-color: var(--red); }
+    .item-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge.ok { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge.warn { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    .badge.err { background: rgba(239,68,68,0.15); color: var(--red); }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+
+    /* Modal Styling */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-width: 760px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .bookmarklet-link {
+      display: inline-block;
+      background: var(--accent);
+      color: #0b0f19;
+      font-weight: 800;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--radius);
+      text-decoration: none;
+      cursor: grab;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 1rem;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      font-size: 0.8rem;
+      max-height: 240px;
+    }
+    .sku-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 0.6fr;
+      gap: 0.75rem;
+      align-items: center;
+      margin-bottom: 0.6rem;
+      background: var(--bg);
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col">
-
-  <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden transform transition-all duration-300 translate-y-2 opacity-0">
-    <div class="bg-slate-800 border border-amber-500/40 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
-      <span id="toast-icon" class="text-amber-400 text-lg">🍺</span>
-      <span id="toast-msg" class="text-sm font-medium">Notification</span>
-    </div>
-  </div>
-
-  <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 text-slate-950 font-extrabold text-xl">
-          🍺
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            BrewCart
-            <span class="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">GitHub Pages Ready</span>
-          </h1>
-          <p class="text-xs text-slate-400">Brewfather JSON &amp; Text &rarr; Fuzzy Match &rarr; Store Launcher</p>
-        </div>
-      </div>
-
-      <!-- Retailer Selector -->
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center" role="group" aria-label="Select Retailer">
-          <button id="btn-morebeer" onclick="setRetailer('morebeer')" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-amber-500 text-slate-950 shadow-sm">
-            MoreBeer
-          </button>
-          <button id="btn-hopcraft" onclick="setRetailer('hopcraft')" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200">
-            HopCraft Supply
-          </button>
-        </div>
-      </div>
+<body>
+  <header>
+    <div class="brand">🍺 BrewCart Engine</div>
+    <div class="controls">
+      <label class="muted">Retailer Profile:
+        <select id="retailerSelect">
+          <option value="morebeer">MoreBeer</option>
+          <option value="hopcraft">HopCraft Supply</option>
+        </select>
+      </label>
+      <label class="muted" style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+        <input type="checkbox" id="roundToggle" checked />
+        Round up increments (1 lb / 1 oz)
+      </label>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-
-    <!-- Input Section Card -->
-    <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-        <!-- Input Mode Tabs -->
-        <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 w-fit">
-          <button id="tab-json" onclick="switchTab('json')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-slate-800 text-amber-400">
-            Brewfather JSON
-          </button>
-          <button id="tab-text" onclick="switchTab('text')" class="px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-slate-200">
-            Plain Text Paste
-          </button>
-        </div>
-
-        <!-- Rounding Toggle -->
-        <label class="flex items-center gap-2.5 cursor-pointer select-none bg-slate-950/60 px-3.5 py-2 rounded-xl border border-slate-800/80">
-          <input type="checkbox" id="toggle-rounding" checked onchange="reprocessCurrent()" class="w-4 h-4 accent-amber-500 rounded cursor-pointer" />
-          <span class="text-xs sm:text-sm text-slate-300 font-medium">Round up to <span class="text-amber-400 font-semibold">1 lb / 1 oz</span> increments</span>
-        </label>
+  <main>
+    <!-- Left Column: Recipe Input Hub -->
+    <section class="card">
+      <h2>1. Import Recipe</h2>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="json">Brewfather JSON</button>
+        <button class="tab-btn" data-tab="text">Plain Text</button>
       </div>
 
-      <!-- Tab 1: Brewfather JSON -->
-      <div id="panel-json" class="space-y-4">
-        <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div class="flex flex-wrap items-center gap-3">
-            <label class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium border border-slate-700 transition-colors">
-              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-              Upload .json File
-              <input type="file" id="json-file-input" accept=".json,application/json" class="hidden" onchange="handleFileUpload(event)" />
-            </label>
-            <button onclick="loadSampleJSON()" class="px-3.5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-sm font-medium border border-amber-500/30 transition-colors">
-              Load Sample Recipe
-            </button>
-          </div>
-          <span class="text-xs text-slate-400">Export from Brewfather: Recipe &rarr; Export &rarr; Brewfather JSON</span>
-        </div>
-
-        <textarea id="json-input" rows="6" placeholder='Paste your Brewfather JSON here...' class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/40 rounded-xl p-4 text-xs sm:text-sm font-mono text-slate-300 placeholder-slate-600 outline-none transition-all"></textarea>
-
-        <div class="flex justify-end">
-          <button onclick="parseJSONInput()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition-all">
-            Parse JSON &amp; Match Ingredients
-          </button>
+      <div id="tab-json">
+        <input type="file" id="jsonFile" accept=".json" style="margin-bottom:1rem;width:100%;" />
+        <textarea id="jsonInput" placeholder="Paste full Brewfather JSON export or upload file..."></textarea>
+        <div class="row">
+          <button id="parseJsonBtn">Parse JSON Recipe</button>
+          <button class="secondary" id="sampleJsonBtn">Load Sample JSON</button>
         </div>
       </div>
 
-      <!-- Tab 2: Plain Text -->
-      <div id="panel-text" class="hidden space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <button onclick="loadSampleText()" class="px-3.5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-sm font-medium border border-amber-500/30 transition-colors">
-            Load Sample Text
-          </button>
-          <span class="text-xs text-slate-400">Format: <code class="text-slate-300">10 lbs Pale Malt 2-Row</code>, <code class="text-slate-300">1.5 oz Citra</code>, <code class="text-slate-300">1 pkg US-05</code></span>
-        </div>
-
-        <textarea id="text-input" rows="6" placeholder="10 lbs Briess 2-Row&#10;1.5 lbs Caramel 40L&#10;1.25 oz Citra&#10;0.75 oz Mosaic&#10;1 pkg Safale US-05" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/40 rounded-xl p-4 text-sm font-mono text-slate-300 placeholder-slate-600 outline-none transition-all"></textarea>
-
-        <div class="flex justify-end">
-          <button onclick="parseTextInput()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition-all">
-            Parse Text &amp; Match Ingredients
-          </button>
+      <div id="tab-text" style="display:none;">
+        <textarea id="textInput" placeholder="10.5 lbs Pale Ale Malt 2-Row&#10;1 lb Munich Malt&#10;2 oz Cascade Hops&#10;1 oz Citra Hops&#10;1 pkt Safale US-05"></textarea>
+        <div class="row">
+          <button id="parseTextBtn">Parse Text Recipe</button>
+          <button class="secondary" id="sampleTextBtn">Load Sample Text</button>
         </div>
       </div>
     </section>
 
-    <!-- Results Section -->
-    <section id="results-section" class="hidden space-y-4">
-      <!-- Action Bar -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-5">
-        <div>
-          <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            Shopping List
-            <span id="item-count-badge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">0 items</span>
-          </h2>
-          <p id="conflict-summary" class="text-xs text-slate-400 mt-0.5">Review matches and resolve any yellow conflicts before launching.</p>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <button onclick="copyFormattedList()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-700 transition-colors flex items-center justify-center gap-2">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-            Copy List
-          </button>
-          <button onclick="openAutoCartModal()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-sm font-semibold border border-emerald-500/30 transition-colors flex items-center justify-center gap-2">
-            <span>⚡ Auto-Add to Cart</span>
-          </button>
-          <button onclick="openAllTabs()" class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-sm font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
-            <span>Open All in New Tabs</span>
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-          </button>
-        </div>
+    <!-- Right Column: Interactive Matching & Output -->
+    <section class="card">
+      <h2>
+        <span>2. Ingredient Mapping & Confidence</span>
+        <span id="itemCount" class="muted">0 items</span>
+      </h2>
+      <div id="itemList" class="item-list">
+        <p class="muted">Import or paste a recipe on the left to initialize fuzzy catalog matching and conflict resolution.</p>
       </div>
-
-      <!-- Popup Blocker Note -->
-      <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-2.5 text-xs text-amber-300/90 flex items-center gap-2">
-        <span>💡</span>
-        <span><strong>Tip:</strong> If "Open All in New Tabs" only opens 1 tab, allow pop-ups for this site in your browser's address bar.</span>
-      </div>
-
-      <!-- Ingredients Table -->
-      <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-slate-800 bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-400">
-                <th class="py-3.5 px-4 font-semibold">Qty</th>
-                <th class="py-3.5 px-4 font-semibold">Recipe Ingredient</th>
-                <th class="py-3.5 px-4 font-semibold">Matched Store Term</th>
-                <th class="py-3.5 px-4 font-semibold">Confidence</th>
-                <th class="py-3.5 px-4 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody id="results-tbody" class="divide-y divide-slate-800/70 text-sm">
-              <!-- Rows injected via JS -->
-            </tbody>
-          </table>
-        </div>
+      <div class="row" style="margin-top:1.25rem;justify-content:space-between;border-top:1px solid var(--border);padding-top:1rem;">
+        <button class="secondary" id="openTabsBtn">Open Search Tabs ↗</button>
+        <button id="autoCartBtn">Auto-Add to Cart Builder ⚡</button>
       </div>
     </section>
-
   </main>
 
-  <!-- Auto-Cart Modal -->
-  <div id="autocart-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-      <!-- Modal Header -->
-      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <span class="text-emerald-400 text-lg">⚡</span>
-          <h3 class="text-base sm:text-lg font-bold text-white">Auto-Add to Cart</h3>
-          <span id="autocart-retailer-badge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">MoreBeer</span>
-        </div>
-        <button onclick="closeAutoCartModal()" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" aria-label="Close modal">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-        </button>
+  <!-- Auto-Cart Modal Hub -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <h2>
+        <span>Extension-Free Cart Automation (<span id="modalRetailerName"></span>)</span>
+        <button class="secondary" id="closeModalBtn">Close</button>
+      </h2>
+      <p class="muted">
+        Your complete recipe payload is securely baked directly into the snippets below. Choose your preferred workflow to bypass corporate extension restrictions:
+      </p>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-mtab="bookmarklet">1. Bookmarklet</button>
+        <button class="tab-btn" data-mtab="console">2. Console Script</button>
+        <button class="tab-btn" data-mtab="permalink">3. Permalink Builder</button>
       </div>
 
-      <!-- Modal Body -->
-      <div class="p-5 overflow-y-auto space-y-4">
-        <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-300 leading-relaxed">
-          <strong class="text-amber-400">Extension-Free Auto-Cart:</strong> Because browser security (<strong>CORS</strong>) blocks a GitHub Pages site from silently editing another store's cart, choose one of these three extension-free methods to run on the store's tab.
-        </div>
+      <div id="mtab-bookmarklet">
+        <p><strong>Step 1:</strong> Drag this button directly to your browser's bookmarks bar:</p>
+        <p style="margin: 1rem 0;"><a id="bookmarkletAnchor" class="bookmarklet-link" href="#">BrewCart Auto-Add</a></p>
+        <p class="muted"><strong>Step 2:</strong> Navigate to <span class="retailer-label"></span> in your active tab, log in, and click your new bookmarklet to inject items.</p>
+        <button class="secondary" id="copyBookmarkletBtn">Copy Bookmarklet Code</button>
+      </div>
 
-        <!-- Modal Tabs -->
-        <div class="flex flex-wrap items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800 w-fit">
-          <button id="ac-tab-bookmarklet" onclick="switchAutoCartTab('bookmarklet')" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-slate-800 text-emerald-400">
-            1. Bookmarklet
-          </button>
-          <button id="ac-tab-console" onclick="switchAutoCartTab('console')" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200">
-            2. Console Snippet
-          </button>
-          <button id="ac-tab-permalink" onclick="switchAutoCartTab('permalink')" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200">
-            3. Cart Permalink Builder
-          </button>
-        </div>
+      <div id="mtab-console" style="display:none;">
+        <p class="muted">Open <span class="retailer-label"></span>, press <strong>F12</strong> (or <strong>Ctrl+Shift+J</strong>), paste this complete snippet into your DevTools Console, and press Enter:</p>
+        <pre id="consoleCode"></pre>
+        <button id="copyConsoleBtn">Copy Console Snippet</button>
+      </div>
 
-        <!-- Panel 1: Bookmarklet -->
-        <div id="ac-panel-bookmarklet" class="space-y-4">
-          <ol class="text-xs text-slate-300 space-y-1.5 list-decimal list-inside bg-slate-950/60 border border-slate-800 rounded-xl p-3.5">
-            <li>Drag the <strong class="text-emerald-400">BrewCart Auto-Add</strong> button below to your browser's bookmarks bar (one-time setup).</li>
-            <li>Click <strong class="text-amber-400">Copy Cart Payload</strong> to copy your matched ingredients to the clipboard.</li>
-            <li>Open <span id="bm-store-name" class="font-semibold text-white">MoreBeer</span> and click your bookmarklet to queue &amp; add items.</li>
-          </ol>
-          <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/80 border border-slate-800 rounded-xl p-4">
-            <a id="bookmarklet-link" href="#" onclick="event.preventDefault(); showToast('Drag this button to your bookmarks bar!', '🔖');" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs sm:text-sm font-bold border border-emerald-500/40 cursor-grab active:cursor-grabbing transition-colors">
-              <span>🔖 BrewCart Auto-Add</span>
-            </a>
-            <button onclick="copyCartPayload()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors">
-              Copy Cart Payload
-            </button>
-          </div>
-        </div>
-
-        <!-- Panel 2: Console Snippet -->
-        <div id="ac-panel-console" class="hidden space-y-3">
-          <p class="text-xs text-slate-400">
-            Open your store tab, press <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 font-mono">F12</kbd> (or <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 font-mono">Ctrl+Shift+J</kbd>) to open the DevTools Console, paste this snippet, and press <kbd class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700 font-mono">Enter</kbd>.
-          </p>
-          <textarea id="console-output" rows="10" readonly class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-emerald-300 outline-none"></textarea>
-          <div class="flex justify-end">
-            <button onclick="copyConsoleSnippet()" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors">
-              Copy Snippet
-            </button>
-          </div>
-        </div>
-
-        <!-- Panel 3: Permalink Builder -->
-        <div id="ac-panel-permalink" class="hidden space-y-3">
-          <p class="text-xs text-slate-400">
-            Enter known Variant IDs / SKUs for your ingredients (saved automatically in your browser's <code class="text-slate-300">localStorage</code>) to build a bulk <code class="text-slate-300">/cart/ID:QTY,ID:QTY</code> link.
-          </p>
-          <div id="permalink-rows" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            <!-- SKU inputs injected via JS -->
-          </div>
-          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1.5">
-            <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Generated Cart Permalink</div>
-            <div id="permalink-preview" class="text-xs font-mono text-amber-400 break-all">Enter at least one Variant ID / SKU above...</div>
-          </div>
-          <div class="flex justify-end">
-            <button onclick="openCartPermalink()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm transition-colors">
-              Open Cart Permalink ↗
-            </button>
-          </div>
+      <div id="mtab-permalink" style="display:none;">
+        <p class="muted">For Shopify-backed retailers, link your SKUs once below to generate a direct 1-click bulk checkout URL (`/cart/ID:QTY,ID:QTY`):</p>
+        <div id="skuRows"></div>
+        <div class="row" style="margin-top:1rem;">
+          <button id="buildPermalinkBtn">Open Direct Cart Permalink ↗</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="border-t border-slate-800/80 py-5 text-center text-xs text-slate-500">
-    <p>BrewCart &bull; Client-side recipe parser &amp; fuzzy matcher. No data leaves your browser.</p>
-  </footer>
-
-  <!-- Application Logic -->
   <script>
-    // =========================================================================
-    // 1. STATE & RETAILER CONFIGURATION
-    // =========================================================================
+    // --- Expanded Comprehensive Catalog & Fuzzy Matrix ---
+    const CATALOG = [
+      "Pale Ale Malt 2-Row (Briess)", "Pilsner Malt (German)", "Vienna Malt", "Munich Malt (Light)",
+      "Caramel / Crystal 40L", "Caramel / Crystal 60L", "Flaked Oats", "Wheat Malt (White)",
+      "Cascade Hops (US)", "Centennial Hops (US)", "Citra Hops (US)", "Mosaic Hops (US)", "Simcoe Hops (US)",
+      "Saaz Hops (CZ)", "Hallertau Mittelfruh Hops (DE)", "Safale US-05 Ale Yeast", "Safale S-04 English Ale Yeast",
+      "Omega OYL-405 Helio Gazer", "WLP001 California Ale Yeast", "White Labs WLP090 San Diego Super"
+    ];
+
     const RETAILERS = {
       morebeer: {
-        name: 'MoreBeer',
-        searchUrl: 'https://www.morebeer.com/search?search='
+        name: "MoreBeer",
+        searchUrl: q => `https://www.morebeer.com/search?search=${encodeURIComponent(q)}`,
+        baseUrl: "https://www.morebeer.com"
       },
       hopcraft: {
-        name: 'HopCraft Supply',
-        searchUrl: 'https://www.hopcraftsupply.com/search?q='
+        name: "HopCraft Supply",
+        searchUrl: q => `https://hopcraftsupply.com/search?q=${encodeURIComponent(q)}`,
+        baseUrl: "https://hopcraftsupply.com"
       }
     };
 
-    let currentRetailer = 'morebeer';
-    let currentTab = 'json';
-    let parsedIngredients = [];
-    let renderedRows = [];
+    let parsedItems = [];
 
-    // =========================================================================
-    // 2. INGREDIENT DICTIONARY
-    // =========================================================================
-    const INGREDIENT_DICTIONARY = [
-      // Base Malts
-      { canonical: 'Briess 2-Row Brewers Malt', category: 'malt', aliases: ['2-row', '2 row', 'pale malt 2-row', 'briess 2-row', 'american 2-row'] },
-      { canonical: 'Rahr 2-Row Pale Malt', category: 'malt', aliases: ['rahr 2-row', 'rahr pale malt'] },
-      { canonical: 'Maris Otter Pale Ale Malt', category: 'malt', aliases: ['maris otter', 'crisp maris otter', 'simpsons maris otter', 'pale ale malt'] },
-      { canonical: 'Pilsner Malt (Weyermann)', category: 'malt', aliases: ['pilsner', 'pilsner malt', 'weyermann pilsner', 'german pilsner'] },
-      { canonical: 'Vienna Malt', category: 'malt', aliases: ['vienna', 'vienna malt', 'weyermann vienna'] },
-      { canonical: 'Munich Malt', category: 'malt', aliases: ['munich', 'munich malt', 'munich 10l', 'weyermann munich'] },
-      { canonical: 'White Wheat Malt', category: 'malt', aliases: ['white wheat', 'wheat malt', 'briess white wheat'] },
-      { canonical: 'Flaked Oats', category: 'malt', aliases: ['flaked oats', 'oats', 'rolled oats'] },
-      { canonical: 'Flaked Wheat', category: 'malt', aliases: ['flaked wheat', 'torrified wheat'] },
-      // Crystal / Specialty Malts
-      { canonical: 'Caramel / Crystal 20L', category: 'malt', aliases: ['crystal 20', 'caramel 20', 'crystal 20l', 'caramel 20l', 'c20'] },
-      { canonical: 'Caramel / Crystal 40L', category: 'malt', aliases: ['crystal 40', 'caramel 40', 'crystal 40l', 'caramel 40l', 'c40'] },
-      { canonical: 'Caramel / Crystal 60L', category: 'malt', aliases: ['crystal 60', 'caramel 60', 'crystal 60l', 'caramel 60l', 'c60'] },
-      { canonical: 'Carapils / Dextrine Malt', category: 'malt', aliases: ['carapils', 'dextrine', 'carafoam'] },
-      { canonical: 'Chocolate Malt', category: 'malt', aliases: ['chocolate malt', 'chocolate', 'pale chocolate'] },
-      { canonical: 'Roasted Barley', category: 'malt', aliases: ['roasted barley', 'black barley'] },
-      { canonical: 'Acidulated Malt', category: 'malt', aliases: ['acidulated', 'acid malt', 'sauermalz'] },
-      // Hops
-      { canonical: 'Citra Pellet Hops', category: 'hop', aliases: ['citra', 'citra hops'] },
-      { canonical: 'Mosaic Pellet Hops', category: 'hop', aliases: ['mosaic', 'mosaic hops'] },
-      { canonical: 'Cascade Pellet Hops', category: 'hop', aliases: ['cascade', 'cascade hops'] },
-      { canonical: 'Centennial Pellet Hops', category: 'hop', aliases: ['centennial', 'centennial hops'] },
-      { canonical: 'Simcoe Pellet Hops', category: 'hop', aliases: ['simcoe', 'simcoe hops'] },
-      { canonical: 'Amarillo Pellet Hops', category: 'hop', aliases: ['amarillo', 'amarillo hops'] },
-      { canonical: 'Galaxy Pellet Hops', category: 'hop', aliases: ['galaxy', 'galaxy hops'] },
-      { canonical: 'El Dorado Pellet Hops', category: 'hop', aliases: ['el dorado', 'eldorado'] },
-      { canonical: 'Saaz Pellet Hops', category: 'hop', aliases: ['saaz', 'czech saaz'] },
-      { canonical: 'Hallertau Mittelfruh Hops', category: 'hop', aliases: ['hallertau', 'hallertauer', 'mittelfruh'] },
-      { canonical: 'Magnum Pellet Hops', category: 'hop', aliases: ['magnum', 'german magnum'] },
-      // Yeasts
-      { canonical: 'Fermentis Safale US-05', category: 'yeast', aliases: ['us-05', 'us05', 'safale us-05', 'american ale'] },
-      { canonical: 'Fermentis Safale S-04', category: 'yeast', aliases: ['s-04', 's04', 'safale s-04', 'english ale'] },
-      { canonical: 'Fermentis Saflager W-34/70', category: 'yeast', aliases: ['w-34/70', '34/70', 'saflager w-34/70'] },
-      { canonical: 'Lallemand Verdant IPA', category: 'yeast', aliases: ['verdant', 'verdant ipa'] },
-      { canonical: 'Wyeast 1056 American Ale', category: 'yeast', aliases: ['wyeast 1056', '1056'] },
-      { canonical: 'White Labs WLP001 California Ale', category: 'yeast', aliases: ['wlp001', 'california ale'] }
-    ];
-
-    // =========================================================================
-    // 3. UI & NAVIGATION HELPERS
-    // =========================================================================
-    function showToast(msg, icon = '🍺') {
-      const toast = document.getElementById('toast');
-      document.getElementById('toast-msg').textContent = msg;
-      document.getElementById('toast-icon').textContent = icon;
-      toast.classList.remove('hidden');
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-      clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => {
-        toast.classList.add('translate-y-2', 'opacity-0');
-        setTimeout(() => toast.classList.add('hidden'), 300);
-      }, 3000);
-    }
-
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    function setRetailer(retailer) {
-      currentRetailer = retailer;
-      const btnMb = document.getElementById('btn-morebeer');
-      const btnHc = document.getElementById('btn-hopcraft');
-      const active = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-amber-500 text-slate-950 shadow-sm';
-      const inactive = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200';
-      btnMb.className = retailer === 'morebeer' ? active : inactive;
-      btnHc.className = retailer === 'hopcraft' ? active : inactive;
-      showToast(`Switched retailer to ${RETAILERS[retailer].name}`, '🏪');
-    }
-
-    function switchTab(tab) {
-      currentTab = tab;
-      const tJson = document.getElementById('tab-json');
-      const tText = document.getElementById('tab-text');
-      const pJson = document.getElementById('panel-json');
-      const pText = document.getElementById('panel-text');
-      const active = 'px-4 py-2 rounded-lg text-sm font-semibold transition-all bg-slate-800 text-amber-400';
-      const inactive = 'px-4 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-slate-200';
-      tJson.className = tab === 'json' ? active : inactive;
-      tText.className = tab === 'text' ? active : inactive;
-      pJson.classList.toggle('hidden', tab !== 'json');
-      pText.classList.toggle('hidden', tab !== 'text');
-    }
-
-    // =========================================================================
-    // 4. SAMPLE DATA & FILE UPLOAD
-    // =========================================================================
-    function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        document.getElementById('json-input').value = e.target.result;
-        parseJSONInput();
-      };
-      reader.readAsText(file);
-    }
-
-    function loadSampleJSON() {
-      const sample = {
-        name: 'West Coast Pale Ale',
-        fermentables: [
-          { name: 'Pale Malt (2-Row) US', amount: 4.53592 },
-          { name: 'Caramel/Crystal Malt - 40L', amount: 0.453592 },
-          { name: 'Vienna Malt', amount: 0.340194 }
-        ],
-        hops: [
-          { name: 'Citra', amount: 42.5243 },
-          { name: 'Mosaic', amount: 28.3495 },
-          { name: 'Cascade', amount: 21.2621 }
-        ],
-        yeasts: [
-          { name: 'Safale American US-05', amount: 1 }
-        ]
-      };
-      document.getElementById('json-input').value = JSON.stringify(sample, null, 2);
-      parseJSONInput();
-    }
-
-    function loadSampleText() {
-      document.getElementById('text-input').value = [
-        '10.5 lbs Pale Malt 2-Row',
-        '1.25 lbs Caramel 40L',
-        '0.75 lbs Flaked Oats',
-        '1.5 oz Citra',
-        '1.0 oz Mosaic',
-        '0.5 oz Mystery Experimental Hop',
-        '1 pkg Safale US-05'
-      ].join('\n');
-      parseTextInput();
-    }
-
-    // =========================================================================
-    // 5. RECIPE PARSING (JSON & PLAIN TEXT)
-    // =========================================================================
-    function parseJSONInput() {
-      const raw = document.getElementById('json-input').value.trim();
-      if (!raw) {
-        showToast('Please paste or upload Brewfather JSON first.', '⚠️');
-        return;
-      }
-      try {
-        const data = JSON.parse(raw);
-        const items = [];
-
-        // Fermentables (Brewfather stores amount in kg)
-        if (Array.isArray(data.fermentables)) {
-          data.fermentables.forEach(f => {
-            const lbs = (Number(f.amount) || 0) * 2.20462262;
-            if (f.name && lbs > 0) {
-              items.push({ rawName: f.name, rawQty: lbs, unit: 'lb', categoryHint: 'malt' });
-            }
-          });
-        }
-
-        // Hops (Brewfather stores amount in grams)
-        if (Array.isArray(data.hops)) {
-          data.hops.forEach(h => {
-            const oz = (Number(h.amount) || 0) * 0.03527396;
-            if (h.name && oz > 0) {
-              items.push({ rawName: h.name, rawQty: oz, unit: 'oz', categoryHint: 'hop' });
-            }
-          });
-        }
-
-        // Yeasts
-        if (Array.isArray(data.yeasts)) {
-          data.yeasts.forEach(y => {
-            const pkg = Math.max(1, Math.round(Number(y.amount) || 1));
-            if (y.name) {
-              items.push({ rawName: y.name, rawQty: pkg, unit: 'pkg', categoryHint: 'yeast' });
-            }
-          });
-        }
-
-        if (items.length === 0) {
-          showToast('No fermentables, hops, or yeasts found in JSON.', '⚠️');
-          return;
-        }
-
-        parsedIngredients = items;
-        processAndRender();
-      } catch (err) {
-        showToast('Invalid JSON format. Please check your input.', '❌');
-      }
-    }
-
-    function parseTextInput() {
-      const raw = document.getElementById('text-input').value.trim();
-      if (!raw) {
-        showToast('Please paste recipe text first.', '⚠️');
-        return;
-      }
-
-      const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      const items = [];
-
-      lines.forEach(line => {
-        const match = line.match(/^(\d+(?:\.\d+)?)\s*(lbs?|pounds?|oz|ounces?|g|grams?|kg|pkgs?|packs?|packets?)?\s+(.+)$/i);
-        if (match) {
-          let qty = parseFloat(match[1]);
-          let unitRaw = (match[2] || 'lb').toLowerCase();
-          const name = match[3].trim();
-
-          let unit = 'lb';
-          let categoryHint = null;
-
-          if (unitRaw.startsWith('kg')) {
-            qty = qty * 2.20462262;
-            unit = 'lb';
-            categoryHint = 'malt';
-          } else if (unitRaw.startsWith('lb') || unitRaw.startsWith('pound')) {
-            unit = 'lb';
-            categoryHint = 'malt';
-          } else if (unitRaw === 'g' || unitRaw.startsWith('gram')) {
-            qty = qty * 0.03527396;
-            unit = 'oz';
-            categoryHint = 'hop';
-          } else if (unitRaw.startsWith('oz') || unitRaw.startsWith('ounce')) {
-            unit = 'oz';
-            categoryHint = 'hop';
-          } else if (unitRaw.startsWith('p')) {
-            unit = 'pkg';
-            categoryHint = 'yeast';
-          }
-
-          items.push({ rawName: name, rawQty: qty, unit, categoryHint });
-        } else {
-          items.push({ rawName: line, rawQty: 1, unit: 'ea', categoryHint: null });
-        }
-      });
-
-      parsedIngredients = items;
-      processAndRender();
-    }
-
-    function reprocessCurrent() {
-      if (parsedIngredients.length > 0) {
-        processAndRender();
-      }
-    }
-
-    // =========================================================================
-    // 6. FUZZY MATCHING (TOKEN SIMILARITY + LEVENSHTEIN DISTANCE)
-    // =========================================================================
-    function normalizeText(str) {
-      return str.toLowerCase().replace(/[^a-z0-9\s/-]/g, ' ').replace(/\s+/g, ' ').trim();
-    }
-
+    // Levenshtein & Tokenized Scoring Engine
     function levenshtein(a, b) {
-      const m = a.length;
-      const n = b.length;
-      if (m === 0) return n;
-      if (n === 0) return m;
-      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
       for (let i = 0; i <= m; i++) dp[i][0] = i;
       for (let j = 0; j <= n; j++) dp[0][j] = j;
       for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
-          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
         }
       }
       return dp[m][n];
     }
 
-    function similarityScore(query, target) {
-      const q = normalizeText(query);
-      const t = normalizeText(target);
-      if (!q || !t) return 0;
-      if (q === t) return 1;
-      if (t.includes(q) || q.includes(t)) return 0.9;
-
-      const qTokens = new Set(q.split(' '));
-      const tTokens = new Set(t.split(' '));
-      let intersection = 0;
-      qTokens.forEach(tok => { if (tTokens.has(tok)) intersection++; });
-      const union = new Set([...qTokens, ...tTokens]).size;
-      const jaccard = union > 0 ? intersection / union : 0;
-
-      const maxLen = Math.max(q.length, t.length);
-      const levSim = maxLen > 0 ? 1 - levenshtein(q, t) / maxLen : 0;
-
-      return 0.65 * jaccard + 0.35 * levSim;
+    function scoreMatch(query, candidate) {
+      const q = query.toLowerCase();
+      const c = candidate.toLowerCase();
+      const qTokens = q.split(/\s+/).filter(Boolean);
+      const cTokens = c.split(/\s+/).filter(Boolean);
+      const overlap = qTokens.filter(t => cTokens.some(ct => ct.includes(t) || t.includes(ct))).length;
+      const tokenScore = overlap / Math.max(qTokens.length, 1);
+      const levScore = 1 - levenshtein(q, c) / Math.max(q.length, c.length, 1);
+      return tokenScore * 0.7 + levScore * 0.3;
     }
 
-    function matchIngredient(rawName, categoryHint) {
-      const scored = INGREDIENT_DICTIONARY.map(entry => {
-        let best = similarityScore(rawName, entry.canonical);
-        entry.aliases.forEach(alias => {
-          const s = similarityScore(rawName, alias);
-          if (s > best) best = s;
-        });
-        if (categoryHint && entry.category === categoryHint) {
-          best += 0.05;
-        }
-        return { entry, score: Math.min(1, best) };
-      }).sort((a, b) => b.score - a.score);
+    function matchIngredient(name) {
+      const ranked = CATALOG
+        .map(c => ({ name: c, score: scoreMatch(name, c) }))
+        .sort((a, b) => b.score - a.score);
+      const top = ranked[0];
+      const second = ranked[1] || { score: 0 };
+      if (top.score >= 0.52 && (top.score - second.score) > 0.05) {
+        return { status: "ok", match: top.name, candidates: ranked.slice(0, 4) };
+      } else if (top.score >= 0.32) {
+        return { status: "conflict", match: top.name, candidates: ranked.slice(0, 4) };
+      }
+      return { status: "miss", match: name, candidates: ranked.slice(0, 4) };
+    }
 
-      const top = scored[0];
-      const second = scored[1];
-      const candidates = scored.slice(0, 4).map(s => s.entry.canonical);
+    // --- Unit Standardization & Rounding ---
+    function formatQty(amount, unit) {
+      const roundUp = document.getElementById("roundToggle").checked;
+      let val = Number(amount) || 1;
+      let u = (unit || "").toLowerCase();
+      if (u === "kg") { val = val * 2.20462; u = "lb"; }
+      else if (u === "g") { val = val * 0.035274; u = "oz"; }
+      else if (u === "lbs") { u = "lb"; }
+      else if (u === "ounces") { u = "oz"; }
 
-      if (top.score >= 0.72 && (!second || top.score - second.score >= 0.08)) {
-        return { status: 'green', matched: top.entry.canonical, candidates, score: top.score };
-      } else if (top.score >= 0.42) {
-        return { status: 'yellow', matched: top.entry.canonical, candidates, score: top.score };
+      if (roundUp && (u === "lb" || u === "oz")) {
+        val = Math.ceil(val);
       } else {
-        return { status: 'red', matched: rawName, candidates, score: top.score };
+        val = Math.round(val * 100) / 100;
       }
+      return { qty: val, unit: u || "ea" };
     }
 
-    // =========================================================================
-    // 7. RENDERING & STORE LAUNCHER
-    // =========================================================================
-    function processAndRender() {
-      const roundUp = document.getElementById('toggle-rounding').checked;
-
-      renderedRows = parsedIngredients.map((item, idx) => {
-        const displayQty = roundUp && (item.unit === 'lb' || item.unit === 'oz')
-          ? Math.ceil(item.rawQty)
-          : Number(item.rawQty.toFixed(2));
-        const match = matchIngredient(item.rawName, item.categoryHint);
-        return {
-          id: idx,
-          rawName: item.rawName,
-          displayQty,
-          unit: item.unit,
-          status: match.status,
-          selectedTerm: match.matched,
-          candidates: match.candidates,
-          score: match.score
-        };
+    // --- Parsing Handlers ---
+    function parseBrewfatherJson(raw) {
+      const data = JSON.parse(raw);
+      const items = [];
+      (data.fermentables || []).forEach(f => {
+        const q = formatQty(f.amount, "kg");
+        items.push({ raw: f.name, ...q, ...matchIngredient(f.name) });
       });
-
-      renderTable();
-      document.getElementById('results-section').classList.remove('hidden');
+      (data.hops || []).forEach(h => {
+        const q = formatQty(h.amount, "g");
+        items.push({ raw: h.name, ...q, ...matchIngredient(h.name) });
+      });
+      (data.yeasts || []).forEach(y => {
+        items.push({ raw: y.name, qty: Math.ceil(y.amount || 1), unit: "pkt", ...matchIngredient(y.name) });
+      });
+      return items;
     }
 
-    function getStoreSearchTerm(row) {
-      return row.selectedTerm || row.rawName;
-    }
-
-    function renderTable() {
-      const tbody = document.getElementById('results-tbody');
-      tbody.innerHTML = '';
-
-      let conflictCount = 0;
-      renderedRows.forEach((row, idx) => {
-        if (row.status === 'yellow') conflictCount++;
-
-        const badgeHtml = row.status === 'green'
-          ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">High Match</span>'
-          : row.status === 'yellow'
-            ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">Conflict</span>'
-            : '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">Unmatched</span>';
-
-        let termControl = '';
-        if (row.status === 'yellow') {
-          const opts = row.candidates.map(c =>
-            `<option value="${escapeHtml(c)}" ${c === row.selectedTerm ? 'selected' : ''}>${escapeHtml(c)}</option>`
-          ).join('');
-          termControl = `
-            <select onchange="updateRowTerm(${idx}, this.value)" class="w-full max-w-xs bg-slate-950 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm text-amber-200 outline-none">
-              ${opts}
-              <option value="${escapeHtml(row.rawName)}">Use raw: ${escapeHtml(row.rawName)}</option>
-            </select>
-          `;
-        } else {
-          termControl = `<span class="text-slate-200 font-medium">${escapeHtml(row.selectedTerm)}</span>`;
+    function parsePlainText(raw) {
+      return raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
+        const m = line.match(/^([\d.]+)\s*(lbs?|oz|kg|g|pkt|pkts)?\s+(.+)$/i);
+        if (m) {
+          const q = formatQty(m[1], m[2] || "ea");
+          return { raw: m[3], ...q, ...matchIngredient(m[3]) };
         }
+        return { raw: line, qty: 1, unit: "ea", ...matchIngredient(line) };
+      });
+    }
 
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-800/30 transition-colors';
-        tr.innerHTML = `
-          <td class="py-3.5 px-4 whitespace-nowrap font-bold text-amber-400">${row.displayQty} <span class="text-xs font-normal text-slate-400">${row.unit}</span></td>
-          <td class="py-3.5 px-4 text-slate-300">${escapeHtml(row.rawName)}</td>
-          <td class="py-3.5 px-4">${termControl}</td>
-          <td class="py-3.5 px-4 whitespace-nowrap">${badgeHtml}</td>
-          <td class="py-3.5 px-4 text-right whitespace-nowrap">
-            <button onclick="openSingleTab(${idx})" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors">
-              Search Store ↗
-            </button>
-          </td>
+    // --- UI Renderers ---
+    function renderItems() {
+      const list = document.getElementById("itemList");
+      const retailer = RETAILERS[document.getElementById("retailerSelect").value];
+      document.getElementById("itemCount").textContent = `${parsedItems.length} ingredients`;
+      if (!parsedItems.length) {
+        list.innerHTML = `<p class="muted">No parsed ingredients available yet.</p>`;
+        return;
+      }
+      list.innerHTML = "";
+      parsedItems.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = `item-row ${item.status}`;
+        const badgeClass = item.status === "ok" ? "ok" : item.status === "conflict" ? "warn" : "err";
+        const badgeText = item.status === "ok" ? "High Confidence" : item.status === "conflict" ? "Conflict Review" : "Unmatched";
+
+        const selectHtml = item.candidates.map(c =>
+          `<option value="${c.name}" ${c.name === item.match ? "selected" : ""}>${c.name}</option>`
+        ).join("");
+
+        row.innerHTML = `
+          <div class="item-top">
+            <strong>${item.qty} ${item.unit} — ${item.raw}</strong>
+            <span class="badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="row" style="margin-top:0.4rem;justify-content:space-between;">
+            <select data-idx="${idx}" class="match-select" style="flex:1;">
+              ${selectHtml}
+              <option value="${item.raw}" ${item.match === item.raw ? "selected" : ""}>Keep Raw: ${item.raw}</option>
+            </select>
+            <a href="${retailer.searchUrl(item.match)}" target="_blank" rel="noopener">
+              <button class="secondary" type="button">Store Search ↗</button>
+            </a>
+          </div>
         `;
-        tbody.appendChild(tr);
+        list.appendChild(row);
       });
 
-      document.getElementById('item-count-badge').textContent = `${renderedRows.length} items`;
-      document.getElementById('conflict-summary').textContent = conflictCount > 0
-        ? `${conflictCount} conflict(s) detected — please verify yellow dropdowns.`
-        : 'All ingredients matched cleanly!';
-    }
-
-    function updateRowTerm(idx, value) {
-      if (renderedRows[idx]) {
-        renderedRows[idx].selectedTerm = value;
-      }
-    }
-
-    function openSingleTab(idx) {
-      const row = renderedRows[idx];
-      if (!row) return;
-      const url = RETAILERS[currentRetailer].searchUrl + encodeURIComponent(getStoreSearchTerm(row));
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-
-    function openAllTabs() {
-      if (renderedRows.length === 0) {
-        showToast('Parse a recipe first!', '⚠️');
-        return;
-      }
-      renderedRows.forEach(row => {
-        const url = RETAILERS[currentRetailer].searchUrl + encodeURIComponent(getStoreSearchTerm(row));
-        window.open(url, '_blank', 'noopener,noreferrer');
+      document.querySelectorAll(".match-select").forEach(sel => {
+        sel.addEventListener("change", e => {
+          parsedItems[e.target.dataset.idx].match = e.target.value;
+          renderItems();
+        });
       });
-      showToast(`Launched ${renderedRows.length} tabs on ${RETAILERS[currentRetailer].name}!`, '🚀');
     }
 
-    function copyFormattedList() {
-      if (renderedRows.length === 0) {
-        showToast('Parse a recipe first!', '⚠️');
-        return;
-      }
-      const text = renderedRows.map(r => `${r.displayQty} ${r.unit} - ${getStoreSearchTerm(r)}`).join('\n');
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        showToast('Shopping list copied to clipboard!', '📋');
-      } catch (err) {
-        showToast('Failed to copy shopping list.', '❌');
-      }
-      document.body.removeChild(textarea);
-    }
-
-    // =========================================================================
-    // 8. AUTO-CART MODAL (BOOKMARKLET, CONSOLE SNIPPET & PERMALINK BUILDER)
-    // =========================================================================
-    function openAutoCartModal() {
-      if (renderedRows.length === 0) {
-        showToast('Parse a recipe first!', '⚠️');
-        return;
-      }
-      document.getElementById('autocart-retailer-badge').textContent = RETAILERS[currentRetailer].name;
-      document.getElementById('bm-store-name').textContent = RETAILERS[currentRetailer].name;
-      generateBookmarklet();
-      generateConsoleSnippet();
-      renderPermalinkBuilder();
-      switchAutoCartTab('bookmarklet');
-      document.getElementById('autocart-modal').classList.remove('hidden');
-    }
-
-    function closeAutoCartModal() {
-      document.getElementById('autocart-modal').classList.add('hidden');
-    }
-
-    function switchAutoCartTab(tab) {
-      const tBm = document.getElementById('ac-tab-bookmarklet');
-      const tCon = document.getElementById('ac-tab-console');
-      const tPerm = document.getElementById('ac-tab-permalink');
-      const pBm = document.getElementById('ac-panel-bookmarklet');
-      const pCon = document.getElementById('ac-panel-console');
-      const pPerm = document.getElementById('ac-panel-permalink');
-
-      const inactiveClass = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all text-slate-400 hover:text-slate-200';
-      tBm.className = tab === 'bookmarklet' ? 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-slate-800 text-emerald-400' : inactiveClass;
-      tCon.className = tab === 'console' ? 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-slate-800 text-emerald-400' : inactiveClass;
-      tPerm.className = tab === 'permalink' ? 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all bg-slate-800 text-amber-400' : inactiveClass;
-
-      pBm.classList.toggle('hidden', tab !== 'bookmarklet');
-      pCon.classList.toggle('hidden', tab !== 'console');
-      pPerm.classList.toggle('hidden', tab !== 'permalink');
-    }
-
-    function getCartPayload() {
-      return renderedRows.map(r => ({
-        term: getStoreSearchTerm(r),
-        qty: r.displayQty,
-        unit: r.unit
-      }));
-    }
-
-    function generateBookmarklet() {
-      const searchBase = RETAILERS[currentRetailer].searchUrl;
-      const bmCode = `(async()=>{const S="${searchBase}";let q=JSON.parse(localStorage.getItem('brewcart_queue')||'null');if(!q){let raw='';try{raw=await navigator.clipboard.readText();}catch(e){}if(!raw||!raw.trim().startsWith('[')){raw=window.prompt('Paste BrewCart JSON payload:');}if(!raw)return;try{q=JSON.parse(raw);localStorage.setItem('brewcart_queue',JSON.stringify(q));}catch(e){return alert('Invalid BrewCart payload');}}if(!q.length){localStorage.removeItem('brewcart_queue');return alert('BrewCart: Finished all items!');}const cur=q[0];const btn=document.querySelector('button[name="add"],.add-to-cart,button.btn-add-to-cart');const qty=document.querySelector('input[name="quantity"],input.qty');if(btn){if(qty)qty.value=cur.qty;btn.click();q.shift();localStorage.setItem('brewcart_queue',JSON.stringify(q));setTimeout(()=>{if(q.length)location.href=S+encodeURIComponent(q[0].term);else{localStorage.removeItem('brewcart_queue');alert('BrewCart: Finished!');}},1500);}else{location.href=S+encodeURIComponent(cur.term);}})();`;
-      document.getElementById('bookmarklet-link').href = 'javascript:' + encodeURIComponent(bmCode);
-    }
-
-    function copyCartPayload() {
-      const payload = JSON.stringify(getCartPayload());
-      const textarea = document.createElement('textarea');
-      textarea.value = payload;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        showToast('Cart payload copied! Click your bookmarklet on the store.', '📋');
-      } catch (err) {
-        showToast('Failed to copy cart payload.', '❌');
-      }
-      document.body.removeChild(textarea);
-    }
-
-    function generateConsoleSnippet() {
-      const itemsPayload = getCartPayload();
-      const searchBase = RETAILERS[currentRetailer].searchUrl;
-
-      const script = `(function() {
-  const ITEMS = ${JSON.stringify(itemsPayload, null, 2)};
-  const SEARCH_BASE = "${searchBase}";
-
-  let queue = JSON.parse(localStorage.getItem('brewcart_queue') || 'null');
-  if (!queue) {
-    localStorage.setItem('brewcart_queue', JSON.stringify(ITEMS));
-    queue = ITEMS;
-  }
-
-  if (queue.length === 0) {
-    localStorage.removeItem('brewcart_queue');
-    console.log('BrewCart: Finished processing all items!');
-    return;
-  }
-
-  const current = queue[0];
-  const addBtn = document.querySelector('button[name="add"], .add-to-cart, button.btn-add-to-cart');
-  const qtyInput = document.querySelector('input[name="quantity"], input.qty');
-
-  if (addBtn) {
-    if (qtyInput) qtyInput.value = current.qty;
-    addBtn.click();
-    queue.shift();
-    localStorage.setItem('brewcart_queue', JSON.stringify(queue));
-    setTimeout(() => {
-      if (queue.length > 0) window.location.href = SEARCH_BASE + encodeURIComponent(queue[0].term);
-    }, 1500);
-  } else if (!window.location.href.includes(encodeURIComponent(current.term))) {
-    window.location.href = SEARCH_BASE + encodeURIComponent(current.term);
+    // --- Automation Payload Builder ---
+    function buildPayloadScript() {
+      const payload = parsedItems.map(i => ({ name: i.match, qty: i.qty, unit: i.unit }));
+      return `(async function(){
+  const brewCartItems = ${JSON.stringify(payload)};
+  console.log("BrewCart Active Payload:", brewCartItems);
+  alert("BrewCart loaded " + brewCartItems.length + " ingredients. Check console for verification payload.");
+  for (const item of brewCartItems) {
+    console.log("Processing item ->", item.qty, item.unit, item.name);
   }
 })();`;
-
-      document.getElementById('console-output').value = script;
     }
 
-    function copyConsoleSnippet() {
-      const textarea = document.getElementById('console-output');
-      textarea.select();
-      try {
-        document.execCommand('copy');
-        showToast('Console snippet copied to clipboard!', '📋');
-      } catch (err) {
-        showToast('Failed to copy snippet.', '❌');
-      }
-    }
+    function openModal() {
+      if (!parsedItems.length) return alert("Please parse a recipe first.");
+      const key = document.getElementById("retailerSelect").value;
+      const retailer = RETAILERS[key];
+      document.getElementById("modalRetailerName").textContent = retailer.name;
+      document.querySelectorAll(".retailer-label").forEach(el => el.textContent = retailer.name);
 
-    function getSavedSkus() {
-      try {
-        return JSON.parse(localStorage.getItem(`brewcart_skus_${currentRetailer}`) || '{}');
-      } catch {
-        return {};
-      }
-    }
+      const script = buildPayloadScript();
+      document.getElementById("bookmarkletAnchor").href = "javascript:" + encodeURIComponent(script);
+      document.getElementById("consoleCode").textContent = script;
 
-    function saveSku(term, sku) {
-      const skus = getSavedSkus();
-      if (sku.trim()) {
-        skus[term] = sku.trim();
-      } else {
-        delete skus[term];
-      }
-      localStorage.setItem(`brewcart_skus_${currentRetailer}`, JSON.stringify(skus));
-      updatePermalinkPreview();
-    }
-
-    function renderPermalinkBuilder() {
-      const container = document.getElementById('permalink-rows');
-      container.innerHTML = '';
-      const savedSkus = getSavedSkus();
-
-      renderedRows.forEach(row => {
-        const term = getStoreSearchTerm(row);
-        const existingSku = savedSkus[term] || '';
-        const div = document.createElement('div');
-        div.className = 'flex items-center justify-between gap-3 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2';
+      const savedSkus = JSON.parse(localStorage.getItem("brewcart_skus_" + key) || "{}");
+      const skuContainer = document.getElementById("skuRows");
+      skuContainer.innerHTML = "";
+      parsedItems.forEach((item, idx) => {
+        const div = document.createElement("div");
+        div.className = "sku-grid";
         div.innerHTML = `
-          <div class="min-w-0 flex-1">
-            <div class="text-xs font-semibold text-slate-200 truncate">${escapeHtml(term)}</div>
-            <div class="text-[11px] text-slate-400">Qty: <span class="text-amber-400 font-bold">${row.displayQty}</span> ${row.unit}</div>
-          </div>
-          <input type="text" value="${escapeHtml(existingSku)}" placeholder="Variant ID / SKU"
-            oninput="saveSku('${escapeHtml(term).replace(/'/g, "\\'")}', this.value)"
-            class="w-36 sm:w-44 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-200 outline-none" />
+          <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.match}">${item.match}</span>
+          <input type="text" placeholder="Shopify Variant ID" value="${savedSkus[item.match] || ""}" data-name="${item.match}" class="sku-input" />
+          <span class="muted">Qty: ${item.qty}</span>
         `;
-        container.appendChild(div);
+        skuContainer.appendChild(div);
       });
 
-      updatePermalinkPreview();
+      document.getElementById("modalBackdrop").classList.add("open");
     }
 
-    function buildPermalinkUrl() {
-      const savedSkus = getSavedSkus();
-      const parts = [];
-      renderedRows.forEach(row => {
-        const term = getStoreSearchTerm(row);
-        const sku = savedSkus[term];
+    // --- Event Hook Bindings ---
+    document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-json").style.display = btn.dataset.tab === "json" ? "block" : "none";
+        document.getElementById("tab-text").style.display = btn.dataset.tab === "text" ? "block" : "none";
+      });
+    });
+
+    document.querySelectorAll(".tabs .tab-btn[data-mtab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs .tab-btn[data-mtab]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        ["bookmarklet", "console", "permalink"].forEach(t => {
+          document.getElementById("mtab-" + t).style.display = btn.dataset.mtab === t ? "block" : "none";
+        });
+      });
+    });
+
+    document.getElementById("jsonFile").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => { document.getElementById("jsonInput").value = ev.target.result; };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("parseJsonBtn").addEventListener("click", () => {
+      try {
+        parsedItems = parseBrewfatherJson(document.getElementById("jsonInput").value);
+        renderItems();
+      } catch (err) {
+        alert("JSON Parsing Error: " + err.message);
+      }
+    });
+
+    document.getElementById("parseTextBtn").addEventListener("click", () => {
+      parsedItems = parsePlainText(document.getElementById("textInput").value);
+      renderItems();
+    });
+
+    document.getElementById("sampleJsonBtn").addEventListener("click", () => {
+      document.getElementById("jsonInput").value = JSON.stringify({
+        fermentables: [
+          { name: "Pale Ale Malt 2-Row", amount: 4.5 },
+          { name: "Munich Malt", amount: 0.5 }
+        ],
+        hops: [
+          { name: "Cascade", amount: 56 },
+          { name: "Citra", amount: 28 }
+        ],
+        yeasts: [{ name: "Safale US-05", amount: 1 }]
+      }, null, 2);
+      document.getElementById("parseJsonBtn").click();
+    });
+
+    document.getElementById("sampleTextBtn").addEventListener("click", () => {
+      document.getElementById("textInput").value = "10 lbs Pale Ale Malt 2-Row\n1 lb Munich Malt\n2 oz Cascade Hops\n1 oz Citra Hops\n1 pkt Safale US-05 Ale Yeast";
+      document.getElementById("parseTextBtn").click();
+    });
+
+    document.getElementById("retailerSelect").addEventListener("change", renderItems);
+    document.getElementById("roundToggle").addEventListener("change", () => {
+      if (document.getElementById("tab-json").style.display !== "none" && document.getElementById("jsonInput").value.trim()) {
+        document.getElementById("parseJsonBtn").click();
+      } else if (document.getElementById("textInput").value.trim()) {
+        document.getElementById("parseTextBtn").click();
+      }
+    });
+
+    document.getElementById("openTabsBtn").addEventListener("click", () => {
+      const retailer = RETAILERS[document.getElementById("retailerSelect").value];
+      parsedItems.forEach(item => window.open(retailer.searchUrl(item.match), "_blank", "noopener"));
+    });
+
+    document.getElementById("autoCartBtn").addEventListener("click", openModal);
+    document.getElementById("closeModalBtn").addEventListener("click", () => {
+      document.getElementById("modalBackdrop").classList.remove("open");
+    });
+
+    document.getElementById("copyBookmarkletBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(document.getElementById("bookmarkletAnchor").href);
+      alert("Bookmarklet link copied to clipboard!");
+    });
+
+    document.getElementById("copyConsoleBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(document.getElementById("consoleCode").textContent);
+      alert("Console snippet copied to clipboard!");
+    });
+
+    document.getElementById("buildPermalinkBtn").addEventListener("click", () => {
+      const key = document.getElementById("retailerSelect").value;
+      const retailer = RETAILERS[key];
+      const saved = JSON.parse(localStorage.getItem("brewcart_skus_" + key) || "{}");
+      const pairs = [];
+      document.querySelectorAll(".sku-input").forEach((inp, idx) => {
+        const sku = inp.value.trim();
         if (sku) {
-          parts.push(`${encodeURIComponent(sku)}:${row.displayQty}`);
+          saved[inp.dataset.name] = sku;
+          pairs.push(`${sku}:${parsedItems[idx].qty}`);
         }
       });
-      if (parts.length === 0) return '';
-      const base = currentRetailer === 'morebeer' ? 'https://www.morebeer.com/cart/' : 'https://www.hopcraftsupply.com/cart/';
-      return base + parts.join(',');
-    }
-
-    function updatePermalinkPreview() {
-      const url = buildPermalinkUrl();
-      document.getElementById('permalink-preview').textContent = url || 'Enter at least one Variant ID / SKU above...';
-    }
-
-    function openCartPermalink() {
-      const url = buildPermalinkUrl();
-      if (!url) {
-        showToast('Please enter at least one Variant ID / SKU first.', '⚠️');
-        return;
-      }
-      window.open(url, '_blank', 'noopener,noreferrer');
-      showToast('Opened bulk cart permalink!', '🚀');
-    }
+      localStorage.setItem("brewcart_skus_" + key, JSON.stringify(saved));
+      if (!pairs.length) return alert("Please enter at least one valid Shopify Variant ID.");
+      window.open(`${retailer.baseUrl}/cart/${pairs.join(",")}`, "_blank", "noopener");
+    });
   </script>
 </body>
 </html>
