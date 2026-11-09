@@ -301,7 +301,7 @@
         <button class="secondary" id="closeModalBtn">Close</button>
       </h2>
       <p class="muted">
-        This script queries Shopify's <code>/search/suggest.json</code>, looks up the <code>1 lb</code> / <code>1 oz</code> variant in <code>/products/{handle}.json</code>, and posts everything to <code>/cart/add.js</code>.
+        This script queries Shopify's <code>/search/suggest.json</code>, looks up the correct variant ID, and posts directly to <code>/cart/add.js</code>.
       </p>
 
       <div class="tabs">
@@ -318,7 +318,7 @@
       </div>
 
       <div id="mtab-console" style="display:none;">
-        <p class="muted">Open <span class="retailer-label"></span>, press <strong>F12</strong> (or <strong>Ctrl+Shift+J</strong>), paste this into the Console, and press Enter:</p>
+        <p class="muted">Open <span class="retailer-label"></span>, type <code>allow pasting</code> if prompted, press <strong>F12</strong> (or <strong>Ctrl+Shift+J</strong>), paste this into the Console, and press Enter:</p>
         <pre id="consoleCode"></pre>
         <button id="copyConsoleBtn">Copy Console Snippet</button>
       </div>
@@ -508,6 +508,7 @@
         const t = (v.title || '').toLowerCase();
         if (item.unit === 'lb') return /1\\s*lb|pound/.test(t);
         if (item.unit === 'oz') return /1\\s*oz|ounce/.test(t);
+        if (item.unit === 'pkt') return /packet|pack|sachet|11g/.test(t);
         return false;
       }) || variants[0];
       toAdd.push({ id: chosen.id, quantity: item.qty });
