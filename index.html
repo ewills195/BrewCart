@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BrewCart — Advanced Recipe to Cart Engine</title>
+  <title>BrewCart — Shopify Recipe to Cart</title>
   <style>
     :root {
       --bg: #0b0f19;
@@ -23,7 +23,7 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
@@ -37,7 +37,6 @@
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     .brand {
       display: flex;
@@ -46,7 +45,6 @@
       font-size: 1.4rem;
       font-weight: 800;
       color: var(--accent);
-      letter-spacing: -0.025em;
     }
     .controls {
       display: flex;
@@ -65,7 +63,6 @@
       border-radius: var(--radius);
       padding: 0.6rem 0.85rem;
       outline: none;
-      transition: border-color 0.2s;
     }
     select:focus, input[type="text"]:focus, textarea:focus {
       border-color: var(--accent);
@@ -78,17 +75,16 @@
       border-radius: var(--radius);
       padding: 0.65rem 1.25rem;
       cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s;
     }
     button:hover { background: var(--accent-hover); }
-    button:active { transform: translateY(1px); }
     button.secondary {
       background: var(--surface-2);
       color: var(--text);
       border: 1px solid var(--border);
     }
     button.secondary:hover { background: var(--surface-hover); }
-    
+
     main {
       max-width: 1280px;
       margin: 2rem auto;
@@ -100,13 +96,11 @@
     @media (min-width: 960px) {
       main { grid-template-columns: 1fr 1.35fr; }
     }
-    
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 1.5rem;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
     }
     h2 {
       margin-top: 0;
@@ -138,7 +132,7 @@
     }
     textarea {
       width: 100%;
-      min-height: 260px;
+      min-height: 250px;
       resize: vertical;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 0.85rem;
@@ -156,7 +150,6 @@
       gap: 0.85rem;
       max-height: 520px;
       overflow-y: auto;
-      padding-right: 0.25rem;
     }
     .item-row {
       background: var(--bg);
@@ -183,14 +176,12 @@
       border-radius: 999px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
     }
     .badge.ok { background: rgba(34,197,94,0.15); color: var(--green); }
     .badge.warn { background: rgba(234,179,8,0.15); color: var(--yellow); }
     .badge.err { background: rgba(239,68,68,0.15); color: var(--red); }
     .muted { color: var(--muted); font-size: 0.85rem; }
 
-    /* Modal Styling */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -212,7 +203,6 @@
       max-height: 90vh;
       overflow-y: auto;
       padding: 2rem;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
     .bookmarklet-link {
       display: inline-block;
@@ -223,7 +213,6 @@
       border-radius: var(--radius);
       text-decoration: none;
       cursor: grab;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     pre {
       background: var(--bg);
@@ -249,9 +238,9 @@
 </head>
 <body>
   <header>
-    <div class="brand">🍺 BrewCart Engine</div>
+    <div class="brand">🍺 BrewCart</div>
     <div class="controls">
-      <label class="muted">Retailer Profile:
+      <label class="muted">Retailer:
         <select id="retailerSelect">
           <option value="morebeer">MoreBeer</option>
           <option value="hopcraft">HopCraft Supply</option>
@@ -259,13 +248,12 @@
       </label>
       <label class="muted" style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
         <input type="checkbox" id="roundToggle" checked />
-        Round up increments (1 lb / 1 oz)
+        Round up (1 lb / 1 oz)
       </label>
     </div>
   </header>
 
   <main>
-    <!-- Left Column: Recipe Input Hub -->
     <section class="card">
       <h2>1. Import Recipe</h2>
       <div class="tabs">
@@ -275,47 +263,45 @@
 
       <div id="tab-json">
         <input type="file" id="jsonFile" accept=".json" style="margin-bottom:1rem;width:100%;" />
-        <textarea id="jsonInput" placeholder="Paste full Brewfather JSON export or upload file..."></textarea>
+        <textarea id="jsonInput" placeholder="Paste Brewfather JSON export or upload file..."></textarea>
         <div class="row">
-          <button id="parseJsonBtn">Parse JSON Recipe</button>
-          <button class="secondary" id="sampleJsonBtn">Load Sample JSON</button>
+          <button id="parseJsonBtn">Parse JSON</button>
+          <button class="secondary" id="sampleJsonBtn">Load Sample</button>
         </div>
       </div>
 
       <div id="tab-text" style="display:none;">
         <textarea id="textInput" placeholder="10.5 lbs Pale Ale Malt 2-Row&#10;1 lb Munich Malt&#10;2 oz Cascade Hops&#10;1 oz Citra Hops&#10;1 pkt Safale US-05"></textarea>
         <div class="row">
-          <button id="parseTextBtn">Parse Text Recipe</button>
-          <button class="secondary" id="sampleTextBtn">Load Sample Text</button>
+          <button id="parseTextBtn">Parse Text</button>
+          <button class="secondary" id="sampleTextBtn">Load Sample</button>
         </div>
       </div>
     </section>
 
-    <!-- Right Column: Interactive Matching & Output -->
     <section class="card">
       <h2>
-        <span>2. Ingredient Mapping & Confidence</span>
+        <span>2. Matched Ingredients</span>
         <span id="itemCount" class="muted">0 items</span>
       </h2>
       <div id="itemList" class="item-list">
-        <p class="muted">Import or paste a recipe on the left to initialize fuzzy catalog matching and conflict resolution.</p>
+        <p class="muted">Parse a recipe on the left to match ingredients.</p>
       </div>
       <div class="row" style="margin-top:1.25rem;justify-content:space-between;border-top:1px solid var(--border);padding-top:1rem;">
         <button class="secondary" id="openTabsBtn">Open Search Tabs ↗</button>
-        <button id="autoCartBtn">Auto-Add to Cart Builder ⚡</button>
+        <button id="autoCartBtn">Auto-Add to Cart ⚡</button>
       </div>
     </section>
   </main>
 
-  <!-- Auto-Cart Modal Hub -->
   <div class="modal-backdrop" id="modalBackdrop">
     <div class="modal">
       <h2>
-        <span>Extension-Free Cart Automation (<span id="modalRetailerName"></span>)</span>
+        <span>Shopify Auto-Cart (<span id="modalRetailerName"></span>)</span>
         <button class="secondary" id="closeModalBtn">Close</button>
       </h2>
       <p class="muted">
-        Your complete recipe payload is securely baked directly into the snippets below. Choose your preferred workflow to bypass corporate extension restrictions:
+        This script queries Shopify's <code>/search/suggest.json</code>, looks up the <code>1 lb</code> / <code>1 oz</code> variant in <code>/products/{handle}.json</code>, and posts everything to <code>/cart/add.js</code>.
       </p>
 
       <div class="tabs">
@@ -325,335 +311,43 @@
       </div>
 
       <div id="mtab-bookmarklet">
-        <p><strong>Step 1:</strong> Drag this button directly to your browser's bookmarks bar:</p>
+        <p><strong>Step 1:</strong> Drag this button to your bookmarks bar:</p>
         <p style="margin: 1rem 0;"><a id="bookmarkletAnchor" class="bookmarklet-link" href="#">BrewCart Auto-Add</a></p>
-        <p class="muted"><strong>Step 2:</strong> Navigate to <span class="retailer-label"></span> in your active tab, log in, and click your new bookmarklet to inject items.</p>
+        <p class="muted"><strong>Step 2:</strong> Open <span class="retailer-label"></span> in a new tab, then click the bookmarklet. It will automatically add your items and open your cart.</p>
         <button class="secondary" id="copyBookmarkletBtn">Copy Bookmarklet Code</button>
       </div>
 
       <div id="mtab-console" style="display:none;">
-        <p class="muted">Open <span class="retailer-label"></span>, press <strong>F12</strong> (or <strong>Ctrl+Shift+J</strong>), paste this complete snippet into your DevTools Console, and press Enter:</p>
+        <p class="muted">Open <span class="retailer-label"></span>, press <strong>F12</strong> (or <strong>Ctrl+Shift+J</strong>), paste this into the Console, and press Enter:</p>
         <pre id="consoleCode"></pre>
         <button id="copyConsoleBtn">Copy Console Snippet</button>
       </div>
 
       <div id="mtab-permalink" style="display:none;">
-        <p class="muted">For Shopify-backed retailers, link your SKUs once below to generate a direct 1-click bulk checkout URL (`/cart/ID:QTY,ID:QTY`):</p>
+        <p class="muted">Save known Shopify Variant IDs once to build a 1-click <code>/cart/ID:QTY</code> URL:</p>
         <div id="skuRows"></div>
         <div class="row" style="margin-top:1rem;">
-          <button id="buildPermalinkBtn">Open Direct Cart Permalink ↗</button>
+          <button id="buildPermalinkBtn">Open Cart Permalink ↗</button>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // --- Expanded Comprehensive Catalog & Fuzzy Matrix ---
     const CATALOG = [
-      "Pale Ale Malt 2-Row (Briess)", "Pilsner Malt (German)", "Vienna Malt", "Munich Malt (Light)",
-      "Caramel / Crystal 40L", "Caramel / Crystal 60L", "Flaked Oats", "Wheat Malt (White)",
-      "Cascade Hops (US)", "Centennial Hops (US)", "Citra Hops (US)", "Mosaic Hops (US)", "Simcoe Hops (US)",
-      "Saaz Hops (CZ)", "Hallertau Mittelfruh Hops (DE)", "Safale US-05 Ale Yeast", "Safale S-04 English Ale Yeast",
-      "Omega OYL-405 Helio Gazer", "WLP001 California Ale Yeast", "White Labs WLP090 San Diego Super"
+      "Pale Ale Malt 2-Row", "Pilsner Malt", "Vienna Malt", "Munich Malt",
+      "Caramel 40L", "Caramel 60L", "Flaked Oats", "Wheat Malt",
+      "Cascade Hops", "Centennial Hops", "Citra Hops", "Mosaic Hops", "Simcoe Hops",
+      "Saaz Hops", "Hallertau Mittelfruh Hops", "Safale US-05", "Safale S-04",
+      "Omega OYL-405 Helio Gazer", "WLP001 California Ale"
     ];
 
     const RETAILERS = {
       morebeer: {
         name: "MoreBeer",
-        searchUrl: q => `https://www.morebeer.com/search?search=${encodeURIComponent(q)}`,
+        searchUrl: q => `https://www.morebeer.com/search?q=${encodeURIComponent(q)}`,
         baseUrl: "https://www.morebeer.com"
       },
       hopcraft: {
         name: "HopCraft Supply",
         searchUrl: q => `https://hopcraftsupply.com/search?q=${encodeURIComponent(q)}`,
-        baseUrl: "https://hopcraftsupply.com"
-      }
-    };
-
-    let parsedItems = [];
-
-    // Levenshtein & Tokenized Scoring Engine
-    function levenshtein(a, b) {
-      const m = a.length, n = b.length;
-      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-      for (let i = 0; i <= m; i++) dp[i][0] = i;
-      for (let j = 0; j <= n; j++) dp[0][j] = j;
-      for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-          dp[i][j] = a[i - 1] === b[j - 1]
-            ? dp[i - 1][j - 1]
-            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-        }
-      }
-      return dp[m][n];
-    }
-
-    function scoreMatch(query, candidate) {
-      const q = query.toLowerCase();
-      const c = candidate.toLowerCase();
-      const qTokens = q.split(/\s+/).filter(Boolean);
-      const cTokens = c.split(/\s+/).filter(Boolean);
-      const overlap = qTokens.filter(t => cTokens.some(ct => ct.includes(t) || t.includes(ct))).length;
-      const tokenScore = overlap / Math.max(qTokens.length, 1);
-      const levScore = 1 - levenshtein(q, c) / Math.max(q.length, c.length, 1);
-      return tokenScore * 0.7 + levScore * 0.3;
-    }
-
-    function matchIngredient(name) {
-      const ranked = CATALOG
-        .map(c => ({ name: c, score: scoreMatch(name, c) }))
-        .sort((a, b) => b.score - a.score);
-      const top = ranked[0];
-      const second = ranked[1] || { score: 0 };
-      if (top.score >= 0.52 && (top.score - second.score) > 0.05) {
-        return { status: "ok", match: top.name, candidates: ranked.slice(0, 4) };
-      } else if (top.score >= 0.32) {
-        return { status: "conflict", match: top.name, candidates: ranked.slice(0, 4) };
-      }
-      return { status: "miss", match: name, candidates: ranked.slice(0, 4) };
-    }
-
-    // --- Unit Standardization & Rounding ---
-    function formatQty(amount, unit) {
-      const roundUp = document.getElementById("roundToggle").checked;
-      let val = Number(amount) || 1;
-      let u = (unit || "").toLowerCase();
-      if (u === "kg") { val = val * 2.20462; u = "lb"; }
-      else if (u === "g") { val = val * 0.035274; u = "oz"; }
-      else if (u === "lbs") { u = "lb"; }
-      else if (u === "ounces") { u = "oz"; }
-
-      if (roundUp && (u === "lb" || u === "oz")) {
-        val = Math.ceil(val);
-      } else {
-        val = Math.round(val * 100) / 100;
-      }
-      return { qty: val, unit: u || "ea" };
-    }
-
-    // --- Parsing Handlers ---
-    function parseBrewfatherJson(raw) {
-      const data = JSON.parse(raw);
-      const items = [];
-      (data.fermentables || []).forEach(f => {
-        const q = formatQty(f.amount, "kg");
-        items.push({ raw: f.name, ...q, ...matchIngredient(f.name) });
-      });
-      (data.hops || []).forEach(h => {
-        const q = formatQty(h.amount, "g");
-        items.push({ raw: h.name, ...q, ...matchIngredient(h.name) });
-      });
-      (data.yeasts || []).forEach(y => {
-        items.push({ raw: y.name, qty: Math.ceil(y.amount || 1), unit: "pkt", ...matchIngredient(y.name) });
-      });
-      return items;
-    }
-
-    function parsePlainText(raw) {
-      return raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
-        const m = line.match(/^([\d.]+)\s*(lbs?|oz|kg|g|pkt|pkts)?\s+(.+)$/i);
-        if (m) {
-          const q = formatQty(m[1], m[2] || "ea");
-          return { raw: m[3], ...q, ...matchIngredient(m[3]) };
-        }
-        return { raw: line, qty: 1, unit: "ea", ...matchIngredient(line) };
-      });
-    }
-
-    // --- UI Renderers ---
-    function renderItems() {
-      const list = document.getElementById("itemList");
-      const retailer = RETAILERS[document.getElementById("retailerSelect").value];
-      document.getElementById("itemCount").textContent = `${parsedItems.length} ingredients`;
-      if (!parsedItems.length) {
-        list.innerHTML = `<p class="muted">No parsed ingredients available yet.</p>`;
-        return;
-      }
-      list.innerHTML = "";
-      parsedItems.forEach((item, idx) => {
-        const row = document.createElement("div");
-        row.className = `item-row ${item.status}`;
-        const badgeClass = item.status === "ok" ? "ok" : item.status === "conflict" ? "warn" : "err";
-        const badgeText = item.status === "ok" ? "High Confidence" : item.status === "conflict" ? "Conflict Review" : "Unmatched";
-
-        const selectHtml = item.candidates.map(c =>
-          `<option value="${c.name}" ${c.name === item.match ? "selected" : ""}>${c.name}</option>`
-        ).join("");
-
-        row.innerHTML = `
-          <div class="item-top">
-            <strong>${item.qty} ${item.unit} — ${item.raw}</strong>
-            <span class="badge ${badgeClass}">${badgeText}</span>
-          </div>
-          <div class="row" style="margin-top:0.4rem;justify-content:space-between;">
-            <select data-idx="${idx}" class="match-select" style="flex:1;">
-              ${selectHtml}
-              <option value="${item.raw}" ${item.match === item.raw ? "selected" : ""}>Keep Raw: ${item.raw}</option>
-            </select>
-            <a href="${retailer.searchUrl(item.match)}" target="_blank" rel="noopener">
-              <button class="secondary" type="button">Store Search ↗</button>
-            </a>
-          </div>
-        `;
-        list.appendChild(row);
-      });
-
-      document.querySelectorAll(".match-select").forEach(sel => {
-        sel.addEventListener("change", e => {
-          parsedItems[e.target.dataset.idx].match = e.target.value;
-          renderItems();
-        });
-      });
-    }
-
-    // --- Automation Payload Builder ---
-    function buildPayloadScript() {
-      const payload = parsedItems.map(i => ({ name: i.match, qty: i.qty, unit: i.unit }));
-      return `(async function(){
-  const brewCartItems = ${JSON.stringify(payload)};
-  console.log("BrewCart Active Payload:", brewCartItems);
-  alert("BrewCart loaded " + brewCartItems.length + " ingredients. Check console for verification payload.");
-  for (const item of brewCartItems) {
-    console.log("Processing item ->", item.qty, item.unit, item.name);
-  }
-})();`;
-    }
-
-    function openModal() {
-      if (!parsedItems.length) return alert("Please parse a recipe first.");
-      const key = document.getElementById("retailerSelect").value;
-      const retailer = RETAILERS[key];
-      document.getElementById("modalRetailerName").textContent = retailer.name;
-      document.querySelectorAll(".retailer-label").forEach(el => el.textContent = retailer.name);
-
-      const script = buildPayloadScript();
-      document.getElementById("bookmarkletAnchor").href = "javascript:" + encodeURIComponent(script);
-      document.getElementById("consoleCode").textContent = script;
-
-      const savedSkus = JSON.parse(localStorage.getItem("brewcart_skus_" + key) || "{}");
-      const skuContainer = document.getElementById("skuRows");
-      skuContainer.innerHTML = "";
-      parsedItems.forEach((item, idx) => {
-        const div = document.createElement("div");
-        div.className = "sku-grid";
-        div.innerHTML = `
-          <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.match}">${item.match}</span>
-          <input type="text" placeholder="Shopify Variant ID" value="${savedSkus[item.match] || ""}" data-name="${item.match}" class="sku-input" />
-          <span class="muted">Qty: ${item.qty}</span>
-        `;
-        skuContainer.appendChild(div);
-      });
-
-      document.getElementById("modalBackdrop").classList.add("open");
-    }
-
-    // --- Event Hook Bindings ---
-    document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById("tab-json").style.display = btn.dataset.tab === "json" ? "block" : "none";
-        document.getElementById("tab-text").style.display = btn.dataset.tab === "text" ? "block" : "none";
-      });
-    });
-
-    document.querySelectorAll(".tabs .tab-btn[data-mtab]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".tabs .tab-btn[data-mtab]").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        ["bookmarklet", "console", "permalink"].forEach(t => {
-          document.getElementById("mtab-" + t).style.display = btn.dataset.mtab === t ? "block" : "none";
-        });
-      });
-    });
-
-    document.getElementById("jsonFile").addEventListener("change", e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => { document.getElementById("jsonInput").value = ev.target.result; };
-      reader.readAsText(file);
-    });
-
-    document.getElementById("parseJsonBtn").addEventListener("click", () => {
-      try {
-        parsedItems = parseBrewfatherJson(document.getElementById("jsonInput").value);
-        renderItems();
-      } catch (err) {
-        alert("JSON Parsing Error: " + err.message);
-      }
-    });
-
-    document.getElementById("parseTextBtn").addEventListener("click", () => {
-      parsedItems = parsePlainText(document.getElementById("textInput").value);
-      renderItems();
-    });
-
-    document.getElementById("sampleJsonBtn").addEventListener("click", () => {
-      document.getElementById("jsonInput").value = JSON.stringify({
-        fermentables: [
-          { name: "Pale Ale Malt 2-Row", amount: 4.5 },
-          { name: "Munich Malt", amount: 0.5 }
-        ],
-        hops: [
-          { name: "Cascade", amount: 56 },
-          { name: "Citra", amount: 28 }
-        ],
-        yeasts: [{ name: "Safale US-05", amount: 1 }]
-      }, null, 2);
-      document.getElementById("parseJsonBtn").click();
-    });
-
-    document.getElementById("sampleTextBtn").addEventListener("click", () => {
-      document.getElementById("textInput").value = "10 lbs Pale Ale Malt 2-Row\n1 lb Munich Malt\n2 oz Cascade Hops\n1 oz Citra Hops\n1 pkt Safale US-05 Ale Yeast";
-      document.getElementById("parseTextBtn").click();
-    });
-
-    document.getElementById("retailerSelect").addEventListener("change", renderItems);
-    document.getElementById("roundToggle").addEventListener("change", () => {
-      if (document.getElementById("tab-json").style.display !== "none" && document.getElementById("jsonInput").value.trim()) {
-        document.getElementById("parseJsonBtn").click();
-      } else if (document.getElementById("textInput").value.trim()) {
-        document.getElementById("parseTextBtn").click();
-      }
-    });
-
-    document.getElementById("openTabsBtn").addEventListener("click", () => {
-      const retailer = RETAILERS[document.getElementById("retailerSelect").value];
-      parsedItems.forEach(item => window.open(retailer.searchUrl(item.match), "_blank", "noopener"));
-    });
-
-    document.getElementById("autoCartBtn").addEventListener("click", openModal);
-    document.getElementById("closeModalBtn").addEventListener("click", () => {
-      document.getElementById("modalBackdrop").classList.remove("open");
-    });
-
-    document.getElementById("copyBookmarkletBtn").addEventListener("click", () => {
-      navigator.clipboard.writeText(document.getElementById("bookmarkletAnchor").href);
-      alert("Bookmarklet link copied to clipboard!");
-    });
-
-    document.getElementById("copyConsoleBtn").addEventListener("click", () => {
-      navigator.clipboard.writeText(document.getElementById("consoleCode").textContent);
-      alert("Console snippet copied to clipboard!");
-    });
-
-    document.getElementById("buildPermalinkBtn").addEventListener("click", () => {
-      const key = document.getElementById("retailerSelect").value;
-      const retailer = RETAILERS[key];
-      const saved = JSON.parse(localStorage.getItem("brewcart_skus_" + key) || "{}");
-      const pairs = [];
-      document.querySelectorAll(".sku-input").forEach((inp, idx) => {
-        const sku = inp.value.trim();
-        if (sku) {
-          saved[inp.dataset.name] = sku;
-          pairs.push(`${sku}:${parsedItems[idx].qty}`);
-        }
-      });
-      localStorage.setItem("brewcart_skus_" + key, JSON.stringify(saved));
-      if (!pairs.length) return alert("Please enter at least one valid Shopify Variant ID.");
-      window.open(`${retailer.baseUrl}/cart/${pairs.join(",")}`, "_blank", "noopener");
-    });
-  </script>
-</body>
-</html>
