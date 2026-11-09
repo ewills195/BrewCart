@@ -351,3 +351,322 @@
       hopcraft: {
         name: "HopCraft Supply",
         searchUrl: q => `https://hopcraftsupply.com/search?q=${encodeURIComponent(q)}`,
+        baseUrl: "https://hopcraftsupply.com"
+      }
+    };
+
+    let parsedItems = [];
+
+    function levenshtein(a, b) {
+      const m = a.length, n = b.length;
+      const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          dp[i][j] = a[i - 1] === b[j - 1]
+            ? dp[i - 1][j - 1]
+            : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+        }
+      }
+      return dp[m][n];
+    }
+
+    function scoreMatch(query, candidate) {
+      const q = query.toLowerCase();
+      const c = candidate.toLowerCase();
+      const qTokens = q.split(/\s+/).filter(Boolean);
+      const cTokens = c.split(/\s+/).filter(Boolean);
+      const overlap = qTokens.filter(t => cTokens.some(ct => ct.includes(t) || t.includes(ct))).length;
+      const tokenScore = overlap / Math.max(qTokens.length, 1);
+      const levScore = 1 - levenshtein(q, c) / Math.max(q.length, c.length, 1);
+      return tokenScore * 0.7 + levScore * 0.3;
+    }
+
+    function matchIngredient(name) {
+      const ranked = CATALOG
+        .map(c => ({ name: c, score: scoreMatch(name, c) }))
+        .sort((a, b) => b.score - a.score);
+      const top = ranked[0];
+      const second = ranked[1] || { score: 0 };
+      if (top.score >= 0.52 && (top.score - second.score) > 0.05) {
+        return { status: "ok", match: top.name, candidates: ranked.slice(0, 4) };
+      } else if (top.score >= 0.32) {
+        return { status: "conflict", match: top.name, candidates: ranked.slice(0, 4) };
+      }
+      return { status: "miss", match: name, candidates: ranked.slice(0, 4) };
+    }
+
+    function formatQty(amount, unit) {
+      const roundUp = document.getElementById("roundToggle").checked;
+      let val = Number(amount) || 1;
+      let u = (unit || "").toLowerCase();
+      if (u === "kg") { val = val * 2.20462; u = "lb"; }
+      else if (u === "g") { val = val * 0.035274; u = "oz"; }
+      else if (u === "lbs") { u = "lb"; }
+      else if (u === "ounces") { u = "oz"; }
+
+      if (roundUp && (u === "lb" || u === "oz")) {
+        val = Math.ceil(val);
+      } else {
+        val = Math.round(val * 100) / 100;
+      }
+      return { qty: val, unit: u || "ea" };
+    }
+
+    function parseBrewfatherJson(raw) {
+      const data = JSON.parse(raw);
+      const items = [];
+      (data.fermentables || []).forEach(f => {
+        const q = formatQty(f.amount, "kg");
+        items.push({ raw: f.name, ...q, ...matchIngredient(f.name) });
+      });
+      (data.hops || []).forEach(h => {
+        const q = formatQty(h.amount, "g");
+        items.push({ raw: h.name, ...q, ...matchIngredient(h.name) });
+      });
+      (data.yeasts || []).forEach(y => {
+        items.push({ raw: y.name, qty: Math.ceil(y.amount || 1), unit: "pkt", ...matchIngredient(y.name) });
+      });
+      return items;
+    }
+
+    function parsePlainText(raw) {
+      return raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(line => {
+        const m = line.match(/^([\d.]+)\s*(lbs?|oz|kg|g|pkt|pkts)?\s+(.+)$/i);
+        if (m) {
+          const q = formatQty(m[1], m[2] || "ea");
+          return { raw: m[3], ...q, ...matchIngredient(m[3]) };
+        }
+        return { raw: line, qty: 1, unit: "ea", ...matchIngredient(line) };
+      });
+    }
+
+    function renderItems() {
+      const list = document.getElementById("itemList");
+      const retailer = RETAILERS[document.getElementById("retailerSelect").value];
+      document.getElementById("itemCount").textContent = `${parsedItems.length} items`;
+      if (!parsedItems.length) {
+        list.innerHTML = `<p class="muted">No parsed ingredients yet.</p>`;
+        return;
+      }
+      list.innerHTML = "";
+      parsedItems.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = `item-row ${item.status}`;
+        const badgeClass = item.status === "ok" ? "ok" : item.status === "conflict" ? "warn" : "err";
+        const badgeText = item.status === "ok" ? "Matched" : item.status === "conflict" ? "Conflict" : "No Match";
+
+        const selectHtml = item.candidates.map(c =>
+          `<option value="${c.name}" ${c.name === item.match ? "selected" : ""}>${c.name}</option>`
+        ).join("");
+
+        row.innerHTML = `
+          <div class="item-top">
+            <strong>${item.qty} ${item.unit} — ${item.raw}</strong>
+            <span class="badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="row" style="margin-top:0.4rem;justify-content:space-between;">
+            <select data-idx="${idx}" class="match-select" style="flex:1;">
+              ${selectHtml}
+              <option value="${item.raw}" ${item.match === item.raw ? "selected" : ""}>Keep Raw: ${item.raw}</option>
+            </select>
+            <a href="${retailer.searchUrl(item.match)}" target="_blank" rel="noopener">
+              <button class="secondary" type="button">Search ↗</button>
+            </a>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      document.querySelectorAll(".match-select").forEach(sel => {
+        sel.addEventListener("change", e => {
+          parsedItems[e.target.dataset.idx].match = e.target.value;
+          renderItems();
+        });
+      });
+    }
+
+    function buildPayloadScript() {
+      const payload = parsedItems.map(i => ({ name: i.match, qty: i.qty, unit: i.unit }));
+      return `(async function(){
+  const items = ${JSON.stringify(payload)};
+  const toAdd = [];
+  const missed = [];
+  for (const item of items) {
+    try {
+      const sRes = await fetch('/search/suggest.json?q=' + encodeURIComponent(item.name) + '&resources[type]=product&resources[limit]=3');
+      const sData = await sRes.json();
+      const products = (sData.resources && sData.resources.results && sData.resources.results.products) || [];
+      if (!products.length) { missed.push(item.name); continue; }
+      const handle = products[0].handle;
+      const pRes = await fetch('/products/' + handle + '.json');
+      const pData = await pRes.json();
+      const variants = (pData.product && pData.product.variants) || [];
+      if (!variants.length) { missed.push(item.name); continue; }
+      let chosen = variants.find(v => {
+        const t = (v.title || '').toLowerCase();
+        if (item.unit === 'lb') return /1\\s*lb|pound/.test(t);
+        if (item.unit === 'oz') return /1\\s*oz|ounce/.test(t);
+        return false;
+      }) || variants[0];
+      toAdd.push({ id: chosen.id, quantity: item.qty });
+    } catch (e) {
+      missed.push(item.name);
+    }
+  }
+  if (!toAdd.length) {
+    alert('BrewCart: Could not match any items on this store.');
+    return;
+  }
+  const cRes = await fetch('/cart/add.js', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: toAdd })
+  });
+  if (cRes.ok) {
+    if (missed.length) alert('Added ' + toAdd.length + ' items. Missed: ' + missed.join(', '));
+    window.location.href = '/cart';
+  } else {
+    alert('BrewCart: Failed to add items to cart.');
+  }
+})();`;
+    }
+
+    function openModal() {
+      if (!parsedItems.length) return alert("Please parse a recipe first.");
+      const key = document.getElementById("retailerSelect").value;
+      const retailer = RETAILERS[key];
+      document.getElementById("modalRetailerName").textContent = retailer.name;
+      document.querySelectorAll(".retailer-label").forEach(el => el.textContent = retailer.name);
+
+      const script = buildPayloadScript();
+      document.getElementById("bookmarkletAnchor").href = "javascript:" + encodeURIComponent(script);
+      document.getElementById("consoleCode").textContent = script;
+
+      const savedSkus = JSON.parse(localStorage.getItem("brewcart_skus_" + key) || "{}");
+      const skuContainer = document.getElementById("skuRows");
+      skuContainer.innerHTML = "";
+      parsedItems.forEach((item) => {
+        const div = document.createElement("div");
+        div.className = "sku-grid";
+        div.innerHTML = `
+          <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.match}">${item.match}</span>
+          <input type="text" placeholder="Variant ID" value="${savedSkus[item.match] || ""}" data-name="${item.match}" class="sku-input" />
+          <span class="muted">Qty: ${item.qty}</span>
+        `;
+        skuContainer.appendChild(div);
+      });
+
+      document.getElementById("modalBackdrop").classList.add("open");
+    }
+
+    document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-json").style.display = btn.dataset.tab === "json" ? "block" : "none";
+        document.getElementById("tab-text").style.display = btn.dataset.tab === "text" ? "block" : "none";
+      });
+    });
+
+    document.querySelectorAll(".tabs .tab-btn[data-mtab]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabs .tab-btn[data-mtab]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        ["bookmarklet", "console", "permalink"].forEach(t => {
+          document.getElementById("mtab-" + t).style.display = btn.dataset.mtab === t ? "block" : "none";
+        });
+      });
+    });
+
+    document.getElementById("jsonFile").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => { document.getElementById("jsonInput").value = ev.target.result; };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("parseJsonBtn").addEventListener("click", () => {
+      try {
+        parsedItems = parseBrewfatherJson(document.getElementById("jsonInput").value);
+        renderItems();
+      } catch (err) {
+        alert("JSON Parsing Error: " + err.message);
+      }
+    });
+
+    document.getElementById("parseTextBtn").addEventListener("click", () => {
+      parsedItems = parsePlainText(document.getElementById("textInput").value);
+      renderItems();
+    });
+
+    document.getElementById("sampleJsonBtn").addEventListener("click", () => {
+      document.getElementById("jsonInput").value = JSON.stringify({
+        fermentables: [
+          { name: "Pale Ale Malt 2-Row", amount: 4.5 },
+          { name: "Munich Malt", amount: 0.5 }
+        ],
+        hops: [
+          { name: "Cascade", amount: 56 },
+          { name: "Citra", amount: 28 }
+        ],
+        yeasts: [{ name: "Safale US-05", amount: 1 }]
+      }, null, 2);
+      document.getElementById("parseJsonBtn").click();
+    });
+
+    document.getElementById("sampleTextBtn").addEventListener("click", () => {
+      document.getElementById("textInput").value = "10 lbs Pale Ale Malt 2-Row\n1 lb Munich Malt\n2 oz Cascade Hops\n1 oz Citra Hops\n1 pkt Safale US-05";
+      document.getElementById("parseTextBtn").click();
+    });
+
+    document.getElementById("retailerSelect").addEventListener("change", renderItems);
+    document.getElementById("roundToggle").addEventListener("change", () => {
+      if (document.getElementById("tab-json").style.display !== "none" && document.getElementById("jsonInput").value.trim()) {
+        document.getElementById("parseJsonBtn").click();
+      } else if (document.getElementById("textInput").value.trim()) {
+        document.getElementById("parseTextBtn").click();
+      }
+    });
+
+    document.getElementById("openTabsBtn").addEventListener("click", () => {
+      const retailer = RETAILERS[document.getElementById("retailerSelect").value];
+      parsedItems.forEach(item => window.open(retailer.searchUrl(item.match), "_blank", "noopener"));
+    });
+
+    document.getElementById("autoCartBtn").addEventListener("click", openModal);
+    document.getElementById("closeModalBtn").addEventListener("click", () => {
+      document.getElementById("modalBackdrop").classList.remove("open");
+    });
+
+    document.getElementById("copyBookmarkletBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(document.getElementById("bookmarkletAnchor").href);
+      alert("Bookmarklet code copied!");
+    });
+
+    document.getElementById("copyConsoleBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(document.getElementById("consoleCode").textContent);
+      alert("Console snippet copied!");
+    });
+
+    document.getElementById("buildPermalinkBtn").addEventListener("click", () => {
+      const key = document.getElementById("retailerSelect").value;
+      const retailer = RETAILERS[key];
+      const saved = JSON.parse(localStorage.getItem("brewcart_skus_" + key) || "{}");
+      const pairs = [];
+      document.querySelectorAll(".sku-input").forEach((inp, idx) => {
+        const sku = inp.value.trim();
+        if (sku) {
+          saved[inp.dataset.name] = sku;
+          pairs.push(`${sku}:${parsedItems[idx].qty}`);
+        }
+      });
+      localStorage.setItem("brewcart_skus_" + key, JSON.stringify(saved));
+      if (!pairs.length) return alert("Enter at least one Shopify Variant ID.");
+      window.open(`${retailer.baseUrl}/cart/${pairs.join(",")}`, "_blank", "noopener");
+    });
+  </script>
+</body>
+</html>
