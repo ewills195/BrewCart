@@ -469,7 +469,6 @@
           <div class="row" style="margin-top:0.4rem;justify-content:space-between;">
             <select data-idx="${idx}" class="match-select" style="flex:1;">
               ${selectHtml}
-              <option value="${item.raw}" ${item.match === item.raw ? "selected" : ""}>Keep Raw: ${item.raw}</option>
             </select>
             <a href="${retailer.searchUrl(item.match)}" target="_blank" rel="noopener">
               <button class="secondary" type="button">Search ↗</button>
