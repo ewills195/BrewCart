@@ -481,8 +481,8 @@
 
       document.querySelectorAll(".match-select").forEach(sel => {
         sel.addEventListener("change", e => {
-          parsedItems[e.target.dataset.idx].match = e.target.value;
-          renderItems();
+          const index = parseInt(e.target.dataset.idx, 10);
+          parsedItems[index].match = e.target.value;
         });
       });
     }
