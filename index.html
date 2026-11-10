@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BrewCart — Shopify Recipe to Cart</title>
+  <title>BrewCart — Universal Recipe to Cart & Shopify Automation</title>
   <style>
     :root {
       --bg: #0b0f19;
@@ -255,18 +255,27 @@
 
   <main>
     <section class="card">
-      <h2>1. Import Recipe</h2>
+      <h2>1. Import Recipe (Universal)</h2>
       <div class="tabs">
-        <button class="tab-btn active" data-tab="json">Brewfather JSON</button>
+        <button class="tab-btn active" data-tab="json">JSON / BeerJSON / Brewfather</button>
+        <button class="tab-btn" data-tab="xml">BeerXML</button>
         <button class="tab-btn" data-tab="text">Plain Text</button>
       </div>
 
       <div id="tab-json">
-        <input type="file" id="jsonFile" accept=".json" style="margin-bottom:1rem;width:100%;" />
-        <textarea id="jsonInput" placeholder="Paste Brewfather JSON export or upload file..."></textarea>
+        <input type="file" id="jsonFile" accept=".json,.txt" style="margin-bottom:1rem;width:100%;" />
+        <textarea id="jsonInput" placeholder="Paste BeerJSON, Brewfather JSON, or batch export..."></textarea>
         <div class="row">
-          <button id="parseJsonBtn">Parse JSON</button>
+          <button id="parseJsonBtn">Parse Recipe</button>
           <button class="secondary" id="sampleJsonBtn">Load Sample</button>
+        </div>
+      </div>
+
+      <div id="tab-xml" style="display:none;">
+        <input type="file" id="xmlFile" accept=".xml,.txt" style="margin-bottom:1rem;width:100%;" />
+        <textarea id="xmlInput" placeholder="Paste BeerXML <RECIPES> content here..."></textarea>
+        <div class="row">
+          <button id="parseXmlBtn">Parse BeerXML</button>
         </div>
       </div>
 
@@ -336,10 +345,11 @@
   <script>
     const CATALOG = [
       "Pale Ale Malt 2-Row", "Pilsner Malt", "Vienna Malt", "Munich Malt",
-      "Caramel 40L", "Caramel 60L", "Flaked Oats", "Wheat Malt",
-      "Cascade Hops", "Centennial Hops", "Citra Hops", "Mosaic Hops", "Simcoe Hops",
-      "Saaz Hops", "Hallertau Mittelfruh Hops", "Safale US-05", "Safale S-04",
-      "Omega OYL-405 Helio Gazer", "WLP001 California Ale"
+      "Caraamber", "Caramel / Crystal Malt", "Caramel 40L", "Caramel 60L", "Flaked Oats", "Wheat Malt",
+      "Midnight Wheat", "Caramunich III", "Cascade", "Fuggle", "Centennial", "Citra", "Azacca", "Simcoe",
+      "Mosaic", "Saaz", "Hallertau Mittelfruh", "Safale US-05", "Safale American", "Safale S-04",
+      "Omega OYL-405 Helio Gazer", "WLP001 California Ale", "Baking Soda (NaHCO3)", "Calcium Chloride (CaCl2)",
+      "Epsom Salt (MgSO4)", "Gypsum (CaSO4)"
     ];
 
     const RETAILERS = {
@@ -403,7 +413,7 @@
       let u = (unit || "").toLowerCase();
       if (u === "kg") { val = val * 2.20462; u = "lb"; }
       else if (u === "g") { val = val * 0.035274; u = "oz"; }
-      else if (u === "lbs") { u = "lb"; }
+      else if (u === "lbs" || u === "pound") { u = "lb"; }
       else if (u === "ounces") { u = "oz"; }
 
       if (roundUp && (u === "lb" || u === "oz")) {
@@ -414,20 +424,89 @@
       return { qty: val, unit: u || "ea" };
     }
 
-    function parseBrewfatherJson(raw) {
-      const data = JSON.parse(raw);
+    // --- Universal Recipe Parser ---
+    function parseRecipeJson(raw) {
+      const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
       const items = [];
-      (data.fermentables || []).forEach(f => {
-        const q = formatQty(f.amount, "kg");
+
+      let ing = null;
+      if (data.beerjson && data.beerjson.recipes && data.beerjson.recipes[0]) {
+        ing = data.beerjson.recipes[0].ingredients || {};
+      } else if (data.recipes && data.recipes[0] && data.recipes[0].ingredients) {
+        ing = data.recipes[0].ingredients;
+      } else {
+        ing = data;
+      }
+
+      // 1. Fermentables
+      const ferms = ing.fermentable_additions || ing.fermentables || ing.batchFermentablesLocal || [];
+      ferms.forEach(f => {
+        const amt = f.amount?.value !== undefined ? f.amount.value : (f.amount || 1);
+        const unit = f.amount?.unit || f.unit || 'kg';
+        const q = formatQty(amt, unit);
         items.push({ raw: f.name, ...q, ...matchIngredient(f.name) });
       });
-      (data.hops || []).forEach(h => {
-        const q = formatQty(h.amount, "g");
+
+      // 2. Hops
+      const hops = ing.hop_additions || ing.hops || ing.batchHops || [];
+      hops.forEach(h => {
+        const amt = h.amount?.value !== undefined ? h.amount.value : (h.amount || 1);
+        const unit = h.amount?.unit || h.unit || 'g';
+        const q = formatQty(amt, unit);
         items.push({ raw: h.name, ...q, ...matchIngredient(h.name) });
       });
-      (data.yeasts || []).forEach(y => {
-        items.push({ raw: y.name, qty: Math.ceil(y.amount || 1), unit: "pkt", ...matchIngredient(y.name) });
+
+      // 3. Yeasts & Miscs (Water agents, etc.)
+      const yeasts = ing.culture_additions || ing.yeasts || ing.batchYeasts || [];
+      yeasts.forEach(y => {
+        const amt = y.amount?.value !== undefined ? y.amount.value : (y.amount || 1);
+        items.push({ raw: y.name, qty: Math.ceil(amt), unit: "pkt", ...matchIngredient(y.name) });
       });
+
+      const miscs = ing.miscellaneous_additions || ing.miscs || ing.batchMiscs || [];
+      miscs.forEach(m => {
+        const amt = m.amount?.value !== undefined ? m.amount.value : (m.amount || 1);
+        const unit = m.amount?.unit || m.unit || 'g';
+        const q = formatQty(amt, unit);
+        items.push({ raw: m.name, ...q, ...matchIngredient(m.name) });
+      });
+
+      return items;
+    }
+
+    function parseBeerXML(xmlString) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+      const getTagText = (parent, tag) => {
+        const el = parent.getElementsByTagName(tag)[0];
+        return el ? el.textContent.trim() : null;
+      };
+
+      const items = [];
+      
+      // Fermentables
+      for (let f of xmlDoc.getElementsByTagName("FERMENTABLE")) {
+        const name = getTagText(f, "NAME");
+        const amt = parseFloat(getTagText(f, "AMOUNT")) || 0;
+        const q = formatQty(amt, 'kg');
+        items.push({ raw: name, ...q, ...matchIngredient(name) });
+      }
+
+      // Hops
+      for (let h of xmlDoc.getElementsByTagName("HOP")) {
+        const name = getTagText(h, "NAME");
+        const amt = parseFloat(getTagText(h, "AMOUNT")) ? parseFloat(getTagText(h, "AMOUNT")) * 1000 : 0;
+        const q = formatQty(amt, 'g');
+        items.push({ raw: name, ...q, ...matchIngredient(name) });
+      }
+
+      // Yeasts
+      for (let y of xmlDoc.getElementsByTagName("YEAST")) {
+        const name = getTagText(y, "NAME");
+        const amt = parseFloat(getTagText(y, "AMOUNT")) || 1;
+        items.push({ raw: name, qty: Math.ceil(amt), unit: "pkt", ...matchIngredient(name) });
+      }
+
       return items;
     }
 
@@ -561,11 +640,13 @@
       document.getElementById("modalBackdrop").classList.add("open");
     }
 
+    // UI Event Listeners
     document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".tabs .tab-btn[data-tab]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         document.getElementById("tab-json").style.display = btn.dataset.tab === "json" ? "block" : "none";
+        document.getElementById("tab-xml").style.display = btn.dataset.tab === "xml" ? "block" : "none";
         document.getElementById("tab-text").style.display = btn.dataset.tab === "text" ? "block" : "none";
       });
     });
@@ -580,6 +661,7 @@
       });
     });
 
+    // File Handlers
     document.getElementById("jsonFile").addEventListener("change", e => {
       const file = e.target.files[0];
       if (!file) return;
@@ -588,12 +670,29 @@
       reader.readAsText(file);
     });
 
+    document.getElementById("xmlFile").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => { document.getElementById("xmlInput").value = ev.target.result; };
+      reader.readAsText(file);
+    });
+
     document.getElementById("parseJsonBtn").addEventListener("click", () => {
       try {
-        parsedItems = parseBrewfatherJson(document.getElementById("jsonInput").value);
+        parsedItems = parseRecipeJson(document.getElementById("jsonInput").value);
         renderItems();
       } catch (err) {
         alert("JSON Parsing Error: " + err.message);
+      }
+    });
+
+    document.getElementById("parseXmlBtn").addEventListener("click", () => {
+      try {
+        parsedItems = parseBeerXML(document.getElementById("xmlInput").value);
+        renderItems();
+      } catch (err) {
+        alert("BeerXML Parsing Error: " + err.message);
       }
     });
 
@@ -604,15 +703,23 @@
 
     document.getElementById("sampleJsonBtn").addEventListener("click", () => {
       document.getElementById("jsonInput").value = JSON.stringify({
-        fermentables: [
-          { name: "Pale Ale Malt 2-Row", amount: 4.5 },
-          { name: "Munich Malt", amount: 0.5 }
-        ],
-        hops: [
-          { name: "Cascade", amount: 56 },
-          { name: "Citra", amount: 28 }
-        ],
-        yeasts: [{ name: "Safale US-05", amount: 1 }]
+        beerjson: {
+          version: 2.06,
+          recipes: [{
+            name: "Ace of Spades (v2)",
+            ingredients: {
+              fermentable_additions: [
+                { name: "Pale Ale Malt 2-Row", amount: { unit: "kg", value: 6.84 } }
+              ],
+              hop_additions: [
+                { name: "Simcoe", amount: { unit: "g", value: 25.8 } }
+              ],
+              culture_additions: [
+                { name: "Safale American", amount: { unit: "pkg", value: 2 } }
+              ]
+            }
+          }]
+        }
       }, null, 2);
       document.getElementById("parseJsonBtn").click();
     });
@@ -626,6 +733,8 @@
     document.getElementById("roundToggle").addEventListener("change", () => {
       if (document.getElementById("tab-json").style.display !== "none" && document.getElementById("jsonInput").value.trim()) {
         document.getElementById("parseJsonBtn").click();
+      } else if (document.getElementById("tab-xml").style.display !== "none" && document.getElementById("xmlInput").value.trim()) {
+        document.getElementById("parseXmlBtn").click();
       } else if (document.getElementById("textInput").value.trim()) {
         document.getElementById("parseTextBtn").click();
       }
